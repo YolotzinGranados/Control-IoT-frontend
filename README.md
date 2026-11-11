@@ -2,7 +2,7 @@
 # Control IoT — Frontend
 
 Aplicación web estática para controlar un vehículo IoT mediante la API FastAPI existente en AWS. Esta práctica implementa únicamente el módulo de **Control**; no crea backend, tablas, Stored Procedures, monitoreo ni administración.
-
+in
 **Desarrollado por Yolotzin D. Granados Mendoza · 2026**
 
 ## Arquitectura
