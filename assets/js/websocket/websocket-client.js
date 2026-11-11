@@ -24,16 +24,25 @@ export class WebSocketClient {
   }
 
   stop() {
-    this.started = false;
-    window.clearTimeout(this.reconnectTimer);
-    window.clearInterval(this.pingTimer);
-    this.reconnectTimer = null;
-    this.pingTimer = null;
-    const socket = this.socket;
-    this.socket = null;
-    if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, 'Cierre solicitado por la aplicación');
-    this.onState('offline');
+  this.started = false;
+  this.connectionId += 1;
+  this.attempt = 0;
+
+  window.clearTimeout(this.reconnectTimer);
+  window.clearInterval(this.pingTimer);
+
+  this.reconnectTimer = null;
+  this.pingTimer = null;
+
+  const socket = this.socket;
+  this.socket = null;
+
+  if (socket && socket.readyState < WebSocket.CLOSING) {
+    socket.close(1000, 'Cierre solicitado por la aplicación');
   }
+
+  this.onState('offline');
+}
 
   send(value) {
     if (this.socket?.readyState !== WebSocket.OPEN) return false;

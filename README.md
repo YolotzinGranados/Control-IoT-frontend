@@ -33,6 +33,7 @@ export const APP_CONFIG = Object.freeze({
   WS_URL: 'wss://44.196.22.143:8000/ws/vehiculos/1',
   HEALTH_PATH: '/health',
   // ...
+  WS_VEHICLES_URL: 'wss://44.196.22.143:8000/ws/vehiculos/',
 });
 ```
 

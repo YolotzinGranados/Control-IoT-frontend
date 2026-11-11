@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1220">
-  <meta name="description" content="Panel de control remoto para vehículo IoT.">
+<meta name="theme-color" content="#fec70a"> 
+ <meta name="description" content="Panel de control remoto para vehículo IoT.">
   <title>Control IoT | Yolotzin</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="./assets/css/layout.css">
   <link rel="stylesheet" href="./assets/css/components.css">
   <link rel="stylesheet" href="./assets/css/responsive.css">
+  <link rel="stylesheet" href="./assets/css/construction.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Saltar al contenido</a>
@@ -30,11 +31,39 @@
             </div>
           </div>
           <div class="header-vehicle">
-            <span class="header-vehicle-label">VEHÍCULO ACTIVO</span>
-            <strong id="vehicle-name">Conectando con el vehículo…</strong>
-            <span id="vehicle-meta" class="muted-text">ID de vehículo: 1</span>
-          </div>
-          <div class="header-tag"><i class="bi bi-broadcast-pin"></i><span>CONTROL REMOTO</span></div>
+  <span class="header-vehicle-label">CARRITO SELECCIONADO</span>
+  <strong id="vehicle-name">Conectando con el vehículo…</strong>
+  <span id="vehicle-meta" class="muted-text"></span>
+</div>
+
+<form id="vehicle-form" class="vehicle-form">
+  <label for="vehicle-id">ID del carrito</label>
+
+  <div class="vehicle-fields">
+    <input
+      id="vehicle-id"
+      class="app-input"
+      type="number"
+      inputmode="numeric"
+      min="1"
+      max="9007199254740991"
+      aria-describedby="vehicle-feedback"
+      required
+      disabled
+    >
+
+    <button
+      id="vehicle-submit"
+      class="btn btn-accent"
+      type="submit"
+      disabled
+    >
+      Conectar
+    </button>
+  </div>
+
+  <p id="vehicle-feedback" role="status"></p>
+</form>
         </div>
         <section class="connectivity-panel" aria-label="Estado de conectividad">
           <div class="connectivity-item" id="ws-connectivity" data-state="checking">
@@ -92,7 +121,9 @@
             </div>
             <span class="panel-index">01</span>
           </div>
-          <p class="panel-description">Desplaza hacia una dirección para enviar una orden por transición. Al soltar, se solicita DETENER.</p>
+          <p class="panel-description">
+  Arrastra o usa las flechas. Al soltar, se solicita DETENER.
+</p>
           <div class="joystick-stage">
             <div class="joystick-direction direction-up"><i class="bi bi-chevron-up"></i><span>AVANZAR</span></div>
             <div class="joystick-direction direction-right"><i class="bi bi-chevron-right"></i><span>DERECHA</span></div>
@@ -108,6 +139,22 @@
             <span id="joystick-status" class="joystick-status"><i class="bi bi-circle-fill"></i> Zona neutral</span>
             <span id="joystick-availability" class="muted-text">Esperando catálogo</span>
           </div>
+          <div class="stop-zone">
+  <button
+    id="stop-button"
+    class="btn stop-button"
+    type="button"
+    disabled
+  >
+    <i class="bi bi-stop-circle-fill"></i>
+    <span>DETENER</span>
+    <small>Prioridad de seguridad</small>
+  </button>
+
+  <p id="stop-help" class="stop-help">
+    Se habilitará cuando la API confirme un comando DETENER en el catálogo.
+  </p>
+</div>
           <div id="direction-availability" class="direction-availability" aria-label="Comandos direccionales disponibles"></div>
         </section>
 
@@ -122,12 +169,6 @@
           <p class="panel-description">Los botones se generan exclusivamente a partir de los comandos activos recibidos desde la API.</p>
           <div id="command-buttons" class="command-grid" aria-live="polite">
             <div class="empty-state"><i class="bi bi-arrow-repeat"></i><span>Cargando catálogo de comandos…</span></div>
-          </div>
-          <div class="stop-zone">
-            <button id="stop-button" class="btn stop-button" type="button" disabled>
-              <i class="bi bi-stop-circle-fill"></i><span>DETENER</span><small>Prioridad de seguridad</small>
-            </button>
-            <p id="stop-help" class="stop-help">Se habilitará cuando la API confirme un comando DETENER en el catálogo.</p>
           </div>
         </section>
 
@@ -177,7 +218,7 @@
     <footer class="app-footer">
       <div class="container-fluid app-container footer-content">
         <span class="footer-brand"><i class="bi bi-cpu"></i> CONTROL IoT</span>
-        <span class="footer-credit">Desarrollado por <strong>Yolotzin D. Granados Mendoza</strong> · 2026</span>
+        <span class="footer-credit">Desarrollado por <strong>Yolotzin Dolores Granados Mendoza</strong> · 2026</span>
         <span class="footer-note">Interfaz de control · Proyecto IoT</span>
       </div>
     </footer>

@@ -1,0 +1,202 @@
+:root {
+  --bg: #44270c;
+  --surface: #000000;
+  --surface-soft: #44270c;
+
+  --accent: #fec70a;
+  --accent-strong: #d48f3e;
+  --accent-ink: #000000;
+
+  --text: #fefefe;
+  --text-muted: #92d9fc;
+  --text-dim: #fefefe;
+
+  --border: #89511e;
+  --border-strong: #d48f3e;
+
+  --info: #41abfb;
+  --warning: #fec70a;
+  --focus: 0 0 0 3px #41abfb;
+}
+
+body {
+  background-color: #44270c;
+  background-image:
+    linear-gradient(#00000030, #44270c70),
+    url("../images/fondo.png");
+  background-position: center top;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.app-header {
+  background: #000000bf;
+  border-bottom: 2px solid #fec70a;
+}
+
+.panel-card {
+  background: #000000d9;
+  border-color: #89511e;
+}
+
+.access-card {
+  background: #44270cf2;
+}
+
+.connectivity-item {
+  background: #000000b8;
+  border-color: #41abfb80;
+}
+
+.app-footer {
+  background: #000000eb;
+}
+
+.main-content {
+  padding-top: clamp(24px, 10vh, 100px);
+}
+
+.section-heading {
+  padding: 18px;
+  border-radius: 15px;
+  background: #000000db;
+}
+
+.eyebrow,
+.header-vehicle-label,
+.connectivity-note,
+.footer-note {
+  color: #92d9fc;
+}
+
+.brand-mark,
+.access-icon,
+.command-icon {
+  color: #fec70a;
+  background: #fec70a18;
+  border-color: #fec70a;
+}
+
+.btn-accent {
+  color: #000000;
+  background: #fec70a;
+  border-color: #fec70a;
+}
+
+.btn-accent:hover,
+.btn-accent:focus {
+  color: #000000;
+  background: #d48f3e;
+  border-color: #fec70a;
+}
+
+.btn-accent:disabled {
+  color: #fefefe;
+  background: #6f6f6e;
+  border-color: #6f6f6e;
+}
+
+.app-input,
+.app-input:focus {
+  color: #fefefe;
+  background-color: #000000;
+  border-color: #41abfb;
+}
+
+.app-input::placeholder {
+  color: #92d9fc;
+}
+
+.command-button {
+  background: #0174e0;
+  border-color: #41abfb;
+}
+
+.command-button:hover:not(:disabled) {
+  background: #89511e;
+  border-color: #fec70a;
+}
+
+.command-copy strong,
+.command-copy small,
+.command-state-icon {
+  color: #fefefe;
+}
+
+.joystick-stage {
+  background: radial-gradient(
+    circle,
+    #0174e080,
+    #000000b0 75%
+  );
+}
+
+.joystick {
+  border-color: #41abfb;
+  background: radial-gradient(
+    circle,
+    #0174e0 0 43%,
+    #000000 44% 65%,
+    #44270c 66%
+  );
+}
+
+.joystick-knob {
+  color: #000000;
+  border-color: #fec70a;
+  background: radial-gradient(
+    circle at 35% 25%,
+    #fefefe,
+    #fec70a 50%,
+    #d48f3e
+  );
+}
+
+.joystick-knob span {
+  border-color: #44270c;
+}
+
+.joystick-direction {
+  color: #92d9fc;
+}
+
+.joystick.is-active {
+  border-color: #fec70a;
+}
+
+.joystick.is-active .joystick-knob {
+  box-shadow:
+    0 0 0 8px #fec70a30,
+    0 10px 24px #000000;
+}
+
+.direction-tag.is-available {
+  color: #92d9fc;
+  border-color: #41abfb;
+  background: #0174e020;
+}
+
+.demo-progress .progress-bar {
+  background: #fec70a;
+}
+
+.action-message,
+.demo-status-box {
+  background: #00000080;
+}
+
+code {
+  color: #fec70a;
+}
+
+@media (max-width: 760px) {
+  body {
+    background-attachment: scroll;
+    background-size: auto 1100px;
+    background-repeat: no-repeat;
+  }
+
+  .main-content {
+    padding-top: 28px;
+  }
+}

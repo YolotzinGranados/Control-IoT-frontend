@@ -19,6 +19,10 @@ export class CommandDispatcher {
   }
 
   setStopCommand(command) { this.stopCommand = command || null; }
+  resetVehicle() {
+  this.stopCommand = null;
+  this.lastAcceptedCommandId = null;
+}
   isBusy() { return this.busy || this.stopRequested || Boolean(this.pendingJoystickCommand); }
 
   send(command, { source = 'button' } = {}) {
