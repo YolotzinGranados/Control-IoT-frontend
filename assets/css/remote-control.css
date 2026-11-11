@@ -1,0 +1,323 @@
+.remote-controller {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 22px;
+  border: 2px solid #d48f3e;
+  border-radius: 44px 44px 65px 65px;
+  background: linear-gradient(
+    155deg,
+    #89511ef2,
+    #44270cf5 48%,
+    #000000ed
+  );
+  box-shadow:
+    inset 0 3px 0 #fec70a80,
+    inset 0 -10px 0 #00000050,
+    0 20px 45px #00000066;
+}
+
+.remote-heading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: #fec70a;
+}
+
+.remote-heading > i {
+  font-size: 1.6rem;
+}
+
+.remote-heading h3 {
+  margin: 0;
+  color: #fefefe;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.remote-body {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(150px, .55fr)
+    minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.remote-controller .remote-movement,
+.remote-controller .remote-functions,
+.remote-pala {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #d48f3e70;
+  border-radius: 24px;
+  background: #000000b8;
+  box-shadow: inset 0 2px 12px #00000060;
+}
+
+.remote-controller .remote-movement {
+  grid-row: auto;
+}
+
+.remote-controller .panel-heading h3,
+.remote-pala h3 {
+  margin: 0;
+  color: #fefefe;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.remote-controller .panel-description {
+  min-height: 40px;
+  margin: 8px 0 12px;
+  color: #92d9fc;
+  font-size: .76rem;
+}
+
+.remote-controller .joystick-stage {
+  width: 100%;
+  min-height: 275px;
+  margin: 0;
+  background: transparent;
+}
+
+.remote-controller .joystick {
+  width: min(76%, 220px);
+}
+
+.remote-controller .joystick-footer {
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.remote-controller #joystick-availability {
+  font-size: .7rem;
+}
+
+.remote-controller .direction-availability {
+  gap: 4px;
+}
+
+.remote-controller .direction-tag {
+  font-size: .58rem;
+}
+
+/* Botones de funciones en el centro */
+.remote-controller .command-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.remote-controller .remote-function-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-height: 80px;
+  padding: 9px 5px;
+  border: 1px solid #fec70a;
+  border-radius: 14px;
+  background: #0174e0;
+  color: #fefefe;
+  text-align: center;
+}
+
+.remote-function-button > .bi:first-child {
+  font-size: 1.35rem;
+}
+
+.remote-button-label {
+  font-size: .68rem;
+  font-weight: 750;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.remote-controller .command-state-icon {
+  margin: 0;
+  font-size: .7rem;
+  color: #92d9fc;
+}
+
+.remote-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 0;
+  color: #92d9fc;
+  font-size: .75rem;
+  text-align: center;
+}
+
+/* Cruceta de la pala */
+.pala-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(70px, auto));
+  gap: 6px;
+  min-height: 275px;
+  padding: 12px;
+  border: 2px solid #41abfb;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #0174e0 0 38%,
+    #000000 39% 67%,
+    #44270c 68%
+  );
+  box-shadow: inset 0 0 22px #00000080;
+}
+
+.pala-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.pala-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pala-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.pala-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.pala-center {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  aspect-ratio: 1;
+  border: 2px solid #d48f3e;
+  border-radius: 50%;
+  background: #fec70a;
+  color: #000000;
+  font-size: 1.5rem;
+  box-shadow: 0 6px 12px #00000080;
+}
+
+.remote-controller .pala-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 6px 3px;
+  border: 1px solid #d48f3e;
+  border-radius: 12px;
+  background: #fec70a;
+  color: #000000;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.pala-button > .bi:first-child {
+  font-size: 1.2rem;
+}
+
+.remote-controller .pala-button .command-state-icon {
+  color: #44270c;
+}
+
+.pala-feedback {
+  margin: 12px 0 0;
+  color: #92d9fc;
+  text-align: center;
+  font-size: .72rem;
+}
+
+/* Estados de los botones */
+.remote-controller .command-button:hover:not(:disabled) {
+  border-color: #fefefe;
+  background: #d48f3e;
+  color: #000000;
+}
+
+.remote-controller .command-button:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.remote-controller .command-button[data-state="sending"] {
+  outline: 2px solid #92d9fc;
+}
+
+.remote-controller .command-button[data-state="accepted"] {
+  border-color: #92d9fc;
+}
+
+.remote-controller .command-button[data-state="error"] {
+  border-color: var(--danger);
+}
+
+.remote-controller .command-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* Parada integrada al control */
+.remote-controller .remote-stop {
+  max-width: 420px;
+  margin: 20px auto 0;
+  padding-top: 16px;
+  border-top: 1px solid #d48f3e;
+}
+
+.remote-stop .stop-help {
+  text-align: center;
+}
+
+/* Adaptación a tablet y celular */
+@media (max-width: 1050px) {
+  .remote-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .remote-controller .remote-functions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .remote-controller .command-grid {
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(85px, 1fr)
+    );
+  }
+}
+
+@media (max-width: 620px) {
+  .remote-controller {
+    padding: 14px;
+    border-radius: 28px;
+  }
+
+  .remote-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .remote-controller .remote-functions {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .remote-controller .joystick-stage,
+  .pala-pad {
+    max-width: 320px;
+    margin-inline: auto;
+  }
+
+  .remote-controller .remote-stop {
+    max-width: none;
+  }
+}
