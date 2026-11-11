@@ -1,0 +1,59 @@
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (max-width: 1050px) {
+  .header-main { grid-template-columns: 1fr auto; }
+  .header-tag { display: none; }
+  .control-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .joystick-card { grid-row: span 1; }
+  .access-card { grid-template-columns: auto 1fr; }
+  .access-form { grid-column: 1 / -1; }
+  .access-feedback { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .app-header { padding-top: 16px; }
+  .header-main { grid-template-columns: 1fr; gap: 13px; }
+  .header-vehicle { padding-left: 0; border-left: 0; }
+  .connectivity-panel { gap: 7px; }
+  .connectivity-item { align-items: flex-start; padding: 9px 8px; gap: 7px; }
+  .connectivity-copy strong { font-size: .66rem; }
+  .connectivity-copy small { font-size: .62rem; }
+  .connectivity-icon { display: none; }
+  .connectivity-note { font-size: .64rem; }
+  .main-content { padding-top: 20px; gap: 17px; }
+  .control-grid { grid-template-columns: 1fr; gap: 14px; }
+  .joystick-card, .operations-card, .demo-card, .action-card { padding: 18px; }
+  .section-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .joystick-stage { min-height: 310px; }
+  .joystick { width: min(70vw, 280px); }
+  .footer-content { flex-direction: column; justify-content: center; gap: 5px; text-align: center; }
+  .footer-note { text-align: center; }
+}
+@media (max-width: 420px) {
+  .app-container { width: min(100% - 22px, 1440px); }
+  .brand-title { font-size: 1.38rem; }
+  .connectivity-panel { grid-template-columns: 1fr; }
+  .connectivity-item { align-items: center; padding: 8px 11px; }
+  .connectivity-icon { display: block; }
+  .access-card { padding: 14px; gap: 11px; }
+  .access-form { display: grid; grid-template-columns: 1fr auto; }
+  .access-form .btn-quiet { grid-column: 2; }
+  .access-feedback { font-size: .65rem; }
+  .joystick-stage { min-height: 286px; }
+  .joystick { width: min(68vw, 250px); }
+  .joystick-direction { font-size: .52rem; }
+  .command-grid { grid-template-columns: 1fr; }
+  .command-button { min-height: 58px; }
+  .demo-actions { display: grid; grid-template-columns: 1fr 1fr; }
+}
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 950px) {
+  .app-header { padding-block: 10px; }
+  .connectivity-panel { margin-top: 10px; }
+  .connectivity-note { display: none; }
+  .main-content { padding-top: 12px; }
+  .control-grid { grid-template-columns: minmax(280px, .85fr) minmax(300px, 1.15fr); }
+  .joystick-stage { min-height: 250px; }
+  .joystick { width: min(48vh, 230px); }
+  .joystick-card, .operations-card, .demo-card, .action-card { padding: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

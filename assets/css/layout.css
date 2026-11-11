@@ -1,0 +1,41 @@
+ .app-header { padding: 22px 0 18px; border-bottom: 1px solid var(--border); background: rgba(10, 17, 29, .72); }
+.header-main { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 24px; }
+.brand-lockup { display: flex; align-items: center; gap: 13px; }
+.brand-mark { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid rgba(163, 230, 53, .3); border-radius: 15px; background: rgba(163, 230, 53, .1); color: var(--accent); font-size: 1.45rem; }
+.brand-title { margin: 0; font-size: 1.55rem; line-height: 1.05; font-weight: 900; letter-spacing: -.06em; }
+.brand-title span { color: var(--accent); }
+.header-vehicle { display: grid; gap: 1px; padding-left: 22px; border-left: 1px solid var(--border); }
+.header-vehicle-label { color: var(--text-dim); font-size: .62rem; font-weight: 800; letter-spacing: .14em; }
+.header-vehicle strong { font-size: .94rem; }
+.header-vehicle .muted-text { font-size: .72rem; }
+.header-tag { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid rgba(163, 230, 53, .22); border-radius: 999px; color: var(--accent); background: rgba(163, 230, 53, .07); font-size: .66rem; font-weight: 900; letter-spacing: .1em; white-space: nowrap; }
+.connectivity-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+.connectivity-item { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--border); border-radius: 14px; background: rgba(22, 37, 59, .68); }
+.status-light { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); box-shadow: 0 0 0 4px rgba(115, 133, 158, .12); }
+.connectivity-copy { min-width: 0; display: grid; line-height: 1.25; }
+.connectivity-copy strong { font-size: .76rem; font-weight: 800; }
+.connectivity-copy small { margin-top: 3px; color: var(--text-muted); font-size: .7rem; }
+.connectivity-icon { margin-left: auto; color: #7e91aa; font-size: 1.05rem; }
+.connectivity-item[data-state="online"] .status-light, .vehicle-state-chip[data-state="online"] .status-light { background: var(--success); box-shadow: 0 0 0 4px rgba(74, 222, 128, .13), 0 0 14px rgba(74, 222, 128, .42); }
+.connectivity-item[data-state="online"] .connectivity-icon { color: var(--success); }
+.connectivity-item[data-state="checking"] .status-light { background: var(--warning); box-shadow: 0 0 0 4px rgba(251, 191, 36, .13); animation: pulse 1.5s infinite; }
+.connectivity-item[data-state="offline"] .status-light, .vehicle-state-chip[data-state="offline"] .status-light { background: var(--danger); box-shadow: 0 0 0 4px rgba(251, 113, 133, .13); }
+.connectivity-item[data-state="offline"] .connectivity-icon { color: var(--danger); }
+.connectivity-item[data-state="unknown"] .status-light, .vehicle-state-chip[data-state="unknown"] .status-light { background: #8797ad; }
+.connectivity-note { margin-top: 9px; color: var(--text-dim); font-size: .69rem; }
+.main-content { display: flex; flex-direction: column; gap: 22px; }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-top: 2px; }
+.section-heading h2 { margin: 0; font-size: clamp(1.45rem, 2.6vw, 2rem); font-weight: 900; letter-spacing: -.055em; }
+.vehicle-state-chip { display: inline-flex; align-items: center; gap: 9px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); background: rgba(20, 33, 54, .7); font-size: .72rem; font-weight: 700; }
+.vehicle-state-chip .status-light { width: 7px; height: 7px; }
+.control-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: 18px; align-items: stretch; }
+.joystick-card, .operations-card, .demo-card, .action-card { padding: 22px; }
+.joystick-card { grid-row: span 2; }
+.demo-card, .action-card { min-height: 220px; }
+.app-footer { margin-top: auto; border-top: 1px solid var(--border); background: rgba(8, 14, 24, .75); }
+.footer-content { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 13px; }
+.footer-brand { color: #c8d5e7; font-size: .68rem; font-weight: 900; letter-spacing: .12em; }
+.footer-brand i { margin-right: 6px; color: var(--accent); }
+.footer-credit { color: var(--text-muted); font-size: .75rem; text-align: center; }
+.footer-credit strong { color: var(--text); font-weight: 800; }
+.footer-note { color: var(--text-dim); font-size: .68rem; text-align: right; }
