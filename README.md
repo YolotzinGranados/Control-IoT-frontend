@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Control IoT — Frontend
 
 Aplicación web estática para controlar un vehículo IoT mediante la API FastAPI existente en AWS. Esta práctica implementa únicamente el módulo de **Control**; no crea backend, tablas, Stored Procedures, monitoreo ni administración.
@@ -121,3 +122,6 @@ Los archivos usan rutas relativas (`./`) para funcionar en la subruta de GitHub 
 ## Verificación realizada en este paquete
 
 Se revisó estáticamente la estructura de módulos, rutas, contratos y sintaxis JavaScript. No se ejecutaron pruebas de red contra AWS, no se comprobó el certificado real de EC2, no se publicó en GitHub Pages y no se probó hardware físico.
+=======
+# Control-IoT-frontend
+>>>>>>> 182719ec51cafb4158263358de307f1afeb83eba
