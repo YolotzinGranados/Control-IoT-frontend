@@ -9,8 +9,7 @@ import {
   normalizeCommandName,
 } from '../domain/command-catalog.js';
 
-// Nombres admitidos para identificar los comandos del catálogo.
-// Cada botón utiliza el ID real recibido desde la API.
+// Deben coincidir con los nombres recibidos desde la API.
 const PALA_NAMES = {
   up: [
     'SUBIR_PALA',
@@ -110,10 +109,14 @@ export class ControlsView {
     const operationsCard = $('.operations-card');
     const stopZone = this.stopButton.closest('.stop-zone');
 
-    const remote = createElement('section', 'remote-controller');
+    const remote = createElement(
+      'section',
+      'remote-controller'
+    );
     remote.setAttribute('aria-label', 'Control remoto del carrito');
 
     const heading = createElement('div', 'remote-heading');
+
     heading.append(
       createElement('i', 'bi bi-controller'),
       createElement('h3', '', 'Control remoto')
@@ -121,15 +124,13 @@ export class ControlsView {
 
     const body = createElement('div', 'remote-body');
 
-    // Inserta el control en la posición actual del joystick.
     joystickCard.before(remote);
     remote.append(heading, body);
 
-    // Reutiliza el joystick existente y sus eventos.
+    // Conserva el joystick existente y sus eventos.
     joystickCard.classList.add('remote-movement');
     $('#joystick-title').textContent = 'Movimiento';
 
-    // Reutiliza el contenedor de botones secundarios.
     operationsCard.classList.add('remote-functions');
     $('#operations-title').textContent = 'Funciones';
 
@@ -141,7 +142,6 @@ export class ControlsView {
       description.textContent = 'Acciones del carrito seleccionado.';
     }
 
-    // Los números decorativos se eliminan de estas dos secciones.
     for (const card of [joystickCard, operationsCard]) {
       card.querySelector('.panel-index')?.remove();
       card.querySelector('.panel-heading .eyebrow')?.remove();
@@ -161,11 +161,12 @@ export class ControlsView {
 
     this.palaRoot = createElement('div', 'pala-pad');
 
-    const center = createElement('div', 'pala-center');
-    center.setAttribute('aria-hidden', 'true');
-    center.append(createElement('i', 'bi-tools'));
+    this.palaCenter = createElement('div', 'pala-center');
+    this.palaCenter.setAttribute('aria-hidden', 'true');
 
-    this.palaCenter = center;
+    this.palaCenter.append(
+      createElement('i', 'bi bi-tools')
+    );
 
     this.palaFeedback = createElement('p', 'pala-feedback');
     this.palaFeedback.setAttribute('role', 'status');
@@ -183,11 +184,9 @@ export class ControlsView {
       palaSection
     );
 
-    // Mueve el botón existente conservando su ID y sus eventos.
     stopZone.classList.add('remote-stop');
     remote.append(stopZone);
 
-    // Muestra las cuatro posiciones mientras se consulta la API.
     this.render([]);
   }
 
@@ -201,6 +200,7 @@ export class ControlsView {
     const assignedIds = new Set();
     let available = 0;
 
+    // Cuatro botones de la pala.
     for (const definition of PALA_BUTTONS) {
       const names = PALA_NAMES[definition.direction];
 
@@ -231,26 +231,42 @@ export class ControlsView {
       return !assignedIds.has(Number(command.id_comando));
     });
 
+    // Botones visibles mientras no hay comandos secundarios.
     if (!secondaryCommands.length) {
-      this.root.append(
-        createElement(
-          'p',
-          'remote-empty',
-          'Sin funciones adicionales disponibles.'
-        )
-      );
+      const placeholders = [
+        { label: 'Luces', icon: 'bi-lightbulb' },
+        { label: 'Sonido', icon: 'bi-volume-mute' },
+        { label: 'Velocidad', icon: 'bi-speedometer2' },
+        { label: 'Aleatorio', icon: 'bi-shuffle' },
+      ];
+
+      for (const item of placeholders) {
+        const button = this.createButton({
+          command: null,
+          label: item.label,
+          icon: item.icon,
+          className: 'remote-function-button',
+        });
+
+        button.title =
+          `${item.label}: esperando un comando disponible en la API.`;
+
+        this.root.append(button);
+      }
+
       return;
     }
 
+    // Este bloque faltaba: crea los botones con los comandos reales.
     for (const command of secondaryCommands) {
-      this.root.append(
-        this.createButton({
-          command,
-          label: displayCommandName(command),
-          icon: iconFor(command.nombre),
-          className: 'remote-function-button',
-        })
-      );
+      const button = this.createButton({
+        command,
+        label: displayCommandName(command),
+        icon: iconFor(command.nombre),
+        className: 'remote-function-button',
+      });
+
+      this.root.append(button);
     }
   }
 
@@ -267,7 +283,11 @@ export class ControlsView {
     const symbol = createElement('i', `bi ${icon}`);
     symbol.setAttribute('aria-hidden', 'true');
 
-    const text = createElement('span', 'remote-button-label', label);
+    const text = createElement(
+      'span',
+      'remote-button-label',
+      label
+    );
 
     const stateIcon = createElement(
       'i',
@@ -278,7 +298,8 @@ export class ControlsView {
     button.append(symbol, text, stateIcon);
 
     if (!command) {
-      button.title = `${label}: comando no disponible en el catálogo.`;
+      button.title =
+        `${label}: comando no disponible en el catálogo.`;
       return button;
     }
 
@@ -288,13 +309,16 @@ export class ControlsView {
       this.onCommand(command, button);
     });
 
-    this.buttons.set(Number(command.id_comando), button);
+    this.buttons.set(
+      Number(command.id_comando),
+      button
+    );
 
     return button;
   }
 
   setEnabled(enabled) {
-    // Solo se habilitan los botones con un comando real asignado.
+    // Los botones sin comando real permanecen deshabilitados.
     for (const button of this.buttons.values()) {
       button.disabled = !enabled;
 
