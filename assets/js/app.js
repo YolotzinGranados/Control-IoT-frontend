@@ -739,9 +739,6 @@ function bindVehicleSelection() {
       return;
     }
 
-    if (id === vehicleId && vehicleActive) {
-      return;
-    }
 
     if (
       dispatcher.isBusy()

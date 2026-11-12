@@ -421,101 +421,7 @@
   font-size: .68rem;
 }
 
-/* Pantallas medianas */
-@media (max-width: 900px) {
-  .remote-controller {
-    padding: 20px;
-    border-radius: 40px 40px 55px 55px;
-  }
-
-  .remote-body {
-    grid-template-columns:
-      minmax(0, 1fr)
-      130px
-      minmax(0, 1fr);
-    gap: 14px;
-  }
-
-  .remote-controller .pala-pad {
-    padding: 10px;
-    gap: 4px;
-  }
-
-  .remote-controller .remote-button-label {
-    font-size: .58rem;
-  }
-}
-
-/* Celular: ambas bases juntas y funciones debajo */
-@media (max-width: 650px) {
-  .remote-controller {
-    padding: 18px 12px 24px;
-    border-radius: 30px 30px 45px 45px;
-  }
-
-  .remote-body {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px 14px;
-  }
-
-  .remote-controller .remote-movement {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .remote-controller .remote-pala {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .remote-controller .remote-functions {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .remote-controller .command-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    max-width: 380px;
-    margin-inline: auto;
-  }
-
-  .remote-controller .joystick-direction span {
-    display: none;
-  }
-
-  .remote-controller .joystick-direction i {
-    font-size: .8rem;
-  }
-
-  .remote-controller .pala-pad {
-    padding: 6px;
-    gap: 3px;
-  }
-
-  .remote-controller .pala-button {
-    gap: 2px;
-    border-radius: 8px;
-    padding: 2px;
-  }
-
-  .remote-controller .pala-button > .bi:first-child {
-    font-size: .85rem;
-  }
-
-  .remote-controller .pala-button .remote-button-label {
-    font-size: .5rem;
-  }
-
-  .remote-controller .pala-center {
-    font-size: 1rem;
-  }
-
-  .remote-controller .panel-heading h3,
-  .remote-controller .remote-pala h3 {
-    font-size: .75rem;
-  }
-}
-/* Evita que los controles ensanchen la página */
+/* Tamaños comunes */
 .remote-controller,
 .remote-controller * {
   box-sizing: border-box;
@@ -537,6 +443,7 @@
   max-width: 310px;
   min-height: 0;
   aspect-ratio: 1;
+  margin-inline: auto;
 }
 
 .remote-controller .remote-button-label {
@@ -544,7 +451,19 @@
   overflow-wrap: anywhere;
 }
 
-/* Tablet y ventanas medianas */
+.remote-controller .direction-availability {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.remote-controller .direction-tag {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+/* Tablet */
 @media (max-width: 1000px) {
   .remote-controller {
     padding: 22px 20px 28px;
@@ -600,8 +519,8 @@
 
   .remote-heading {
     max-width: 100%;
-    margin-bottom: 22px;
     padding: 9px 16px;
+    margin-bottom: 22px;
   }
 
   .remote-heading h3 {
@@ -630,9 +549,7 @@
 
   .remote-controller .joystick-stage,
   .remote-controller .pala-pad {
-    width: 100%;
     max-width: 280px;
-    margin-inline: auto;
   }
 
   .remote-controller .joystick {
@@ -689,17 +606,6 @@
 
   .remote-controller .remote-function-button .remote-button-label {
     font-size: .75rem;
-  }
-
-  .remote-controller .direction-availability {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .remote-controller .direction-tag {
-    max-width: 100%;
-    white-space: normal;
-    text-align: center;
   }
 
   .remote-controller .remote-stop {
