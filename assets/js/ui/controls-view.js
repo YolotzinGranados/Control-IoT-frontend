@@ -13,45 +13,30 @@ import {
   PalaJoystickView,
 } from './pala-joystick-view.js';
 
-const PALA_NAMES = {
-  up: [
-    'SUBIR_PALA',
-    'PALA_ARRIBA',
-    'SUBIR_BRAZO',
-  ],
-  down: [
-    'BAJAR_PALA',
-    'PALA_ABAJO',
-    'BAJAR_BRAZO',
-  ],
-  left: [
-    'ABRIR_PALA',
-  ],
-  right: [
-    'CERRAR_PALA',
-  ],
-};
-
-const PALA_BUTTONS = [
+const PALA_DIRECTIONS = [
   {
     direction: 'up',
-    label: 'Subir pala',
+    label: 'SUBIR PALA',
     icon: 'bi-chevron-up',
-  },
-  {
-    direction: 'left',
-    label: 'Abrir pala',
-    icon: 'bi-chevron-left',
-  },
-  {
-    direction: 'right',
-    label: 'Cerrar pala',
-    icon: 'bi-chevron-right',
+    names: ['SUBIR_PALA', 'PALA_ARRIBA', 'SUBIR_BRAZO'],
   },
   {
     direction: 'down',
-    label: 'Bajar pala',
+    label: 'BAJAR PALA',
     icon: 'bi-chevron-down',
+    names: ['BAJAR_PALA', 'PALA_ABAJO', 'BAJAR_BRAZO'],
+  },
+  {
+    direction: 'left',
+    label: 'ABRIR PALA',
+    icon: 'bi-chevron-left',
+    names: ['ABRIR_PALA'],
+  },
+  {
+    direction: 'right',
+    label: 'CERRAR PALA',
+    icon: 'bi-chevron-right',
+    names: ['CERRAR_PALA'],
   },
 ];
 
@@ -74,7 +59,7 @@ function iconFor(name) {
     return 'bi-shuffle';
   }
 
-  if (value.includes('BRAZO') || value.includes('PALA')) {
+  if (value.includes('PALA') || value.includes('BRAZO')) {
     return 'bi-tools';
   }
 
@@ -99,6 +84,8 @@ export class ControlsView {
       dispatcher,
     });
 
+    this.render([]);
+
     this.stopButton.addEventListener('click', () => {
       this.onStop();
     });
@@ -109,15 +96,8 @@ export class ControlsView {
     const operationsCard = $('.operations-card');
     const stopZone = this.stopButton.closest('.stop-zone');
 
-    const remote = createElement(
-      'section',
-      'remote-controller'
-    );
-
-    remote.setAttribute(
-      'aria-label',
-      'Control remoto del carrito'
-    );
+    const remote = createElement('section', 'remote-controller');
+    remote.setAttribute('aria-label', 'Control remoto del carrito');
 
     const heading = createElement('div', 'remote-heading');
 
@@ -150,44 +130,50 @@ export class ControlsView {
       card.querySelector('.panel-heading .eyebrow')?.remove();
     }
 
-    const palaSection = createElement(
-      'section',
-      'remote-pala'
-    );
+    const palaSection = createElement('section', 'remote-pala');
+    palaSection.setAttribute('aria-labelledby', 'pala-title');
 
-    palaSection.setAttribute(
-      'aria-labelledby',
-      'pala-title'
-    );
+    const title = createElement('h3', '', 'Pala');
+    title.id = 'pala-title';
 
-    const palaTitle = createElement('h3', '', 'Pala');
-    palaTitle.id = 'pala-title';
+    // Base de la palanca. Las direcciones son etiquetas,
+    // no botones.
+    this.palaRoot = createElement('div', 'pala-pad pala-stick');
 
-    const palaDescription = createElement(
-      'p',
-      'panel-description',
-      'Arrastra la palanca o pulsa una dirección.'
-    );
-
-    this.palaRoot = createElement('div', 'pala-pad');
     this.palaCenter = createElement('div', 'pala-center');
+    this.palaCenter.title =
+      'Arrastra para controlar la pala. Suelta para detener.';
 
-    this.palaCenter.append(
-      createElement('i', 'bi bi-tools')
+    const knobRing = createElement('span', 'pala-knob-ring');
+    knobRing.setAttribute('aria-hidden', 'true');
+
+    knobRing.append(
+      createElement('i', 'bi bi-arrows-move')
     );
 
-    this.palaFeedback = createElement(
-      'p',
-      'pala-feedback'
-    );
+    this.palaCenter.append(knobRing);
+    this.palaRoot.append(this.palaCenter);
 
+    this.palaFeedback = createElement('p', 'pala-feedback');
     this.palaFeedback.setAttribute('role', 'status');
 
+    const instructions = createElement(
+      'p',
+      'pala-stick-help',
+      'Arrastra la palanca amarilla. Suelta para detener.'
+    );
+
+    instructions.id = 'pala-stick-help';
+    this.palaCenter.setAttribute(
+      'aria-describedby',
+      'pala-stick-help'
+    );
+
     palaSection.append(
-      palaTitle,
-      palaDescription,
+      title,
       this.palaRoot,
-      this.palaFeedback
+      this.palaFeedback,
+      instructions
     );
 
     body.append(
@@ -198,108 +184,105 @@ export class ControlsView {
 
     stopZone.classList.add('remote-stop');
     remote.append(stopZone);
-
-    this.render([]);
   }
 
   render(commands) {
+    // Conserva el elemento de la palanca y sus eventos.
+    this.palaJoystick.forceNeutral();
     this.root.replaceChildren();
-    this.palaRoot.replaceChildren();
     this.buttons.clear();
 
-    this.palaRoot.append(this.palaCenter);
-
-    const assignedIds = new Set();
-    const palaDirections = {};
-    let available = 0;
-
-    for (const definition of PALA_BUTTONS) {
-      const names = PALA_NAMES[definition.direction];
-
-      const command = commands.find((item) => {
-        return names.includes(normalizeCommandName(item.nombre))
-          && !assignedIds.has(Number(item.id_comando));
-      });
-
-      const button = this.createButton({
-        command,
-        label: definition.label,
-        icon: definition.icon,
-        className: `pala-button pala-${definition.direction}`,
-      });
-
-      this.palaRoot.append(button);
-
-      if (command) {
-        palaDirections[definition.direction] = command;
-        assignedIds.add(Number(command.id_comando));
-        available += 1;
-      }
+    for (const label of this.palaRoot.querySelectorAll(
+      '.pala-direction-label'
+    )) {
+      label.remove();
     }
 
-    this.palaJoystick?.setCatalog(palaDirections);
+    const assignedIds = new Set();
+    const directions = {};
+
+    for (const definition of PALA_DIRECTIONS) {
+      const command = commands.find((item) => {
+        return definition.names.includes(
+          normalizeCommandName(item.nombre)
+        ) && !assignedIds.has(Number(item.id_comando));
+      });
+
+      if (command) {
+        directions[definition.direction] = command;
+        assignedIds.add(Number(command.id_comando));
+      }
+
+      const label = createElement(
+        'div',
+        `pala-direction-label pala-label-${definition.direction}`
+      );
+
+      label.dataset.available = String(Boolean(command));
+
+      const icon = createElement('i', `bi ${definition.icon}`);
+      icon.setAttribute('aria-hidden', 'true');
+
+      label.append(
+        icon,
+        createElement('span', '', definition.label)
+      );
+
+      label.title = command
+        ? `${definition.label}: disponible`
+        : `${definition.label}: no está en el catálogo`;
+
+      this.palaRoot.append(label);
+    }
+
+    this.palaJoystick.setCatalog(directions);
 
     this.palaFeedback.textContent =
-      `${available}/4 movimientos de pala disponibles`;
+      `${Object.keys(directions).length}/4 movimientos de pala disponibles`;
 
     const secondaryCommands = commands.filter((command) => {
       return !assignedIds.has(Number(command.id_comando));
     });
 
     if (!secondaryCommands.length) {
-      const placeholders = [
-        { label: 'Luces', icon: 'bi-lightbulb' },
-        { label: 'Sonido', icon: 'bi-volume-mute' },
-        { label: 'Velocidad', icon: 'bi-speedometer2' },
-        { label: 'Aleatorio', icon: 'bi-shuffle' },
-      ];
-
-      for (const item of placeholders) {
-        const button = this.createButton({
-          command: null,
-          label: item.label,
-          icon: item.icon,
-          className: 'remote-function-button',
-        });
-
-        button.title =
-          `${item.label}: esperando un comando disponible en la API.`;
-
-        this.root.append(button);
-      }
+      this.root.append(
+        createElement(
+          'p',
+          'remote-empty',
+          'Sin funciones adicionales disponibles.'
+        )
+      );
 
       return;
     }
 
     for (const command of secondaryCommands) {
-      const button = this.createButton({
-        command,
-        label: displayCommandName(command),
-        icon: iconFor(command.nombre),
-        className: 'remote-function-button',
-      });
-
-      this.root.append(button);
+      this.root.append(this.createButton(command));
     }
   }
 
-  createButton({ command, label, icon, className }) {
+  createButton(command) {
     const button = createElement(
       'button',
-      `command-button ${className}`
+      'command-button remote-function-button'
     );
 
     button.type = 'button';
     button.disabled = true;
     button.dataset.state = 'disabled';
+    button.title = displayCommandName(command);
 
-    const symbol = createElement('i', `bi ${icon}`);
-    symbol.setAttribute('aria-hidden', 'true');
+    const icon = createElement(
+      'i',
+      `bi ${iconFor(command.nombre)}`
+    );
 
-    const text = createElement(
+    icon.setAttribute('aria-hidden', 'true');
+
+    const label = createElement(
       'span',
       'remote-button-label',
-      label
+      displayCommandName(command)
     );
 
     const stateIcon = createElement(
@@ -308,16 +291,8 @@ export class ControlsView {
     );
 
     stateIcon.setAttribute('aria-hidden', 'true');
-    button.append(symbol, text, stateIcon);
 
-    if (!command) {
-      button.title =
-        `${label}: comando no disponible en el catálogo.`;
-
-      return button;
-    }
-
-    button.title = displayCommandName(command);
+    button.append(icon, label, stateIcon);
 
     button.addEventListener('click', () => {
       this.onCommand(command, button);
@@ -329,7 +304,7 @@ export class ControlsView {
   }
 
   setEnabled(enabled) {
-    this.palaJoystick?.setEnabled(enabled);
+    this.palaJoystick.setEnabled(enabled);
 
     for (const button of this.buttons.values()) {
       button.disabled = !enabled;

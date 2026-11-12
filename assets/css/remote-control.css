@@ -645,3 +645,201 @@
   outline: 3px solid #92d9fc;
   outline-offset: 4px;
 }
+
+/* Pala con palanca arrastrable */
+.remote-controller .pala-pad.pala-stick {
+  position: relative;
+  display: block;
+  padding: 0;
+  gap: 0;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Aro interior y disco azul, similares al joystick izquierdo */
+.remote-controller .pala-stick::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  height: 72%;
+  border: 2px solid #6f6f6e;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #0174e0 0 48%,
+    #000000 49% 100%
+  );
+  box-shadow: inset 0 5px 15px #000000;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Palanca central */
+.remote-controller .pala-stick .pala-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+
+  display: grid;
+  place-items: center;
+
+  width: 31%;
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+
+  border: 2px solid #d48f3e;
+  border-radius: 50%;
+
+  background: radial-gradient(
+    circle at 35% 25%,
+    #fec70a,
+    #d48f3e 75%
+  );
+
+  color: #000000;
+  font-size: 1.4rem;
+
+  box-shadow:
+    inset 0 3px 0 #fefefe60,
+    0 6px 0 #89511e,
+    0 10px 18px #00000090;
+
+  transform: translate(
+    calc(-50% + var(--pala-x, 0px)),
+    calc(-50% + var(--pala-y, 0px))
+  );
+
+  transition: transform 140ms ease-out;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  z-index: 3;
+}
+
+/* Durante el arrastre sigue inmediatamente al puntero */
+.remote-controller .pala-stick .pala-center.is-dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+.remote-controller .pala-stick .pala-center[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.remote-controller .pala-stick .pala-center:focus-visible {
+  outline: 3px solid #92d9fc;
+  outline-offset: 5px;
+}
+
+.remote-controller .pala-stick .pala-knob-ring {
+  display: grid;
+  place-items: center;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 1px solid #89511e;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: none;
+}
+
+.remote-controller .pala-stick .pala-center * {
+  pointer-events: none;
+}
+
+/* Etiquetas direccionales sin botones */
+.remote-controller .pala-direction-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+
+  width: max-content;
+  max-width: 28%;
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+
+  color: #fefefe;
+  font-size: .5rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+
+  pointer-events: none;
+  z-index: 2;
+}
+
+.remote-controller .pala-direction-label i {
+  color: #fec70a;
+  font-size: .9rem;
+}
+
+.remote-controller .pala-direction-label[data-available="false"] {
+  opacity: .45;
+}
+
+.remote-controller .pala-label-up {
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.remote-controller .pala-label-down {
+  bottom: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.remote-controller .pala-label-left {
+  top: 50%;
+  left: 5px;
+  transform: translateY(-50%);
+}
+
+.remote-controller .pala-label-right {
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+}
+
+.remote-controller .pala-stick-help {
+  margin: 6px 0 0;
+  color: #fefefe;
+  font-size: .7rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .remote-controller .pala-direction-label {
+    font-size: .48rem;
+  }
+
+  .remote-controller .pala-direction-label i {
+    font-size: .85rem;
+  }
+
+  .remote-controller .pala-stick .pala-center {
+    font-size: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .remote-controller .pala-stick .pala-center {
+    transition: none;
+  }
+}
