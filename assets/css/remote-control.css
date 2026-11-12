@@ -617,3 +617,31 @@
     min-height: 58px;
   }
 }
+.remote-controller .pala-center {
+  position: relative;
+  z-index: 5;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  transform: translate(
+    var(--pala-x, 0px),
+    var(--pala-y, 0px)
+  );
+}
+
+.remote-controller .pala-center > * {
+  pointer-events: none;
+}
+
+.remote-controller .pala-center.is-dragging {
+  cursor: grabbing;
+}
+
+.remote-controller .pala-center[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.remote-controller .pala-center:focus-visible {
+  outline: 3px solid #92d9fc;
+  outline-offset: 4px;
+}

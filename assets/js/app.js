@@ -300,6 +300,7 @@ joystickView = new JoystickView({
 
 // Botones manuales y DETENER.
 controlsView = new ControlsView({
+  dispatcher,
   onCommand: async (command, button) => {
     controlsView.setButtonState(button, 'sending');
 
@@ -340,6 +341,30 @@ controlsView = new ControlsView({
       );
     }
   },
+  onStop: async () => {
+  joystickView.forceNeutral({
+    sendStop: false,
+  });
+
+  controlsView.palaJoystick.forceNeutral({
+    sendStop: false,
+  });
+
+  controlsView.setStopState('sending');
+
+  try {
+    await dispatcher.stop();
+    controlsView.setStopState('accepted');
+  } catch (error) {
+    controlsView.setStopState('error');
+
+    notifications.show(
+      'No se pudo detener',
+      friendlyError(error),
+      'error'
+    );
+  }
+},
 });
 
 // Se crea un controlador nuevo al cambiar de carrito.
@@ -445,16 +470,17 @@ demoView = new DemoView({
 
   onStart: async () => {
     if (
-      joystickController.currentDirection !== 'neutral'
-      || dispatcher.isBusy()
-    ) {
-      notifications.show(
-        'Control ocupado',
-        'Suelta el joystick y espera a que termine la orden pendiente antes de iniciar una DEMO.',
-        'warning'
-      );
-      return;
-    }
+  joystickController.currentDirection !== 'neutral'
+  || controlsView.palaJoystick.currentDirection !== 'neutral'
+  || dispatcher.isBusy()
+) {
+  notifications.show(
+    'Control ocupado',
+    'Suelta ambas palancas y espera a que termine la orden pendiente antes de iniciar una DEMO.',
+    'warning'
+  );
+  return;
+}
 
     try {
       await runDemoRequest(() => demoController.start());
@@ -752,6 +778,19 @@ function bindVehicleSelection() {
       );
       return;
     }
+    if (
+  dispatcher.isBusy()
+  || demoRequests
+  || demoController.isActive()
+  || joystickController.currentDirection !== 'neutral'
+  || controlsView.palaJoystick.currentDirection !== 'neutral'
+) {
+  setText(
+    feedback,
+    'Suelta ambas palancas, cancela la DEMO activa y espera las órdenes pendientes antes de cambiar de carrito.'
+  );
+  return;
+}
 
     switchingVehicle = true;
 

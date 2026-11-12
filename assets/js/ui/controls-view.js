@@ -1,14 +1,10 @@
 import {
-  $,
-  createElement,
-  setDisabled,
-} from '../utils/dom.js';
+  $, createElement, setDisabled,} from '../utils/dom.js';
 
 import {
-  displayCommandName,
-  normalizeCommandName,
-} from '../domain/command-catalog.js';
+  displayCommandName,normalizeCommandName,} from '../domain/command-catalog.js';
 
+import { PalaJoystickView } from './pala-joystick-view.js';
 // Deben coincidir con los nombres recibidos desde la API.
 const PALA_NAMES = {
   up: [
@@ -90,6 +86,11 @@ export class ControlsView {
     this.buttons = new Map();
 
     this.buildRemoteLayout();
+    this.palaJoystick = new PalaJoystickView({
+  root: this.palaRoot,
+  knob: this.palaCenter,
+  dispatcher,
+});
 
     this.stopButton.addEventListener('click', () => {
       this.onStop();
@@ -191,7 +192,7 @@ export class ControlsView {
 
     const assignedIds = new Set();
     let available = 0;
-
+const palaDirections = {};
     // Cuatro botones de la pala.
     for (const definition of PALA_BUTTONS) {
       const names = PALA_NAMES[definition.direction];
@@ -210,12 +211,13 @@ export class ControlsView {
 
       this.palaRoot.append(button);
 
-      if (command) {
-        assignedIds.add(Number(command.id_comando));
-        available += 1;
-      }
+     if (command) {
+  palaDirections[definition.direction] = command;
+  assignedIds.add(Number(command.id_comando));
+  available += 1;
+}
     }
-
+this.palaJoystick?.setCatalog(palaDirections);
     this.palaFeedback.textContent =
       `${available}/4 movimientos de pala disponibles`;
 
@@ -310,6 +312,7 @@ export class ControlsView {
   }
 
   setEnabled(enabled) {
+    this.palaJoystick?.setEnabled(enabled);
     // Los botones sin comando real permanecen deshabilitados.
     for (const button of this.buttons.values()) {
       button.disabled = !enabled;
