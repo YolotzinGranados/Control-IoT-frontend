@@ -2,14 +2,33 @@
 <html lang="es-MX">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#fec70a"> 
- <meta name="description" content="Panel de control remoto para vehículo IoT.">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#fec70a">
+  <meta
+    name="description"
+    content="Panel de control remoto para vehículo IoT."
+  >
+
   <title>Control IoT | Yolotzin</title>
+
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  >
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    rel="stylesheet"
+  >
+
   <link rel="stylesheet" href="./assets/css/tokens.css">
   <link rel="stylesheet" href="./assets/css/base.css">
   <link rel="stylesheet" href="./assets/css/layout.css">
@@ -18,209 +37,454 @@
   <link rel="stylesheet" href="./assets/css/construction.css">
   <link rel="stylesheet" href="./assets/css/remote-control.css">
 </head>
+
 <body>
   <a class="skip-link" href="#main-content">Saltar al contenido</a>
+
   <div class="app-shell">
     <header class="app-header">
       <div class="container-fluid app-container">
         <div class="header-main">
           <div class="brand-lockup">
-            <div class="brand-mark" aria-hidden="true"><i class="bi bi-controller"></i></div>
+            <div class="brand-mark" aria-hidden="true">
+              <i class="bi bi-controller"></i>
+            </div>
+
             <div>
               <p class="eyebrow mb-1">YOLO · INTERNET OF THINGS</p>
               <h1 class="brand-title">Control <span>IoT</span></h1>
             </div>
           </div>
+
           <div class="header-vehicle">
-  <span class="header-vehicle-label">CARRITO SELECCIONADO</span>
-  <strong id="vehicle-name">Conectando con el vehículo…</strong>
-  <span id="vehicle-meta" class="muted-text"></span>
-</div>
+            <span class="header-vehicle-label">
+              CARRITO SELECCIONADO
+            </span>
 
-<form id="vehicle-form" class="vehicle-form">
-  <label for="vehicle-id">ID del carrito</label>
+            <strong id="vehicle-name">
+              Conectando con el vehículo…
+            </strong>
 
-  <div class="vehicle-fields">
-    <input
-      id="vehicle-id"
-      class="app-input"
-      type="number"
-      inputmode="numeric"
-      min="1"
-      max="9007199254740991"
-      aria-describedby="vehicle-feedback"
-      required
-      disabled
-    >
+            <span id="vehicle-meta" class="muted-text"></span>
+          </div>
 
-    <button
-      id="vehicle-submit"
-      class="btn btn-accent"
-      type="submit"
-      disabled
-    >
-      Conectar
-    </button>
-  </div>
+          <form id="vehicle-form" class="vehicle-form">
+            <label for="vehicle-id">ID del carrito</label>
 
-  <p id="vehicle-feedback" role="status"></p>
-</form>
+            <div class="vehicle-fields">
+              <input
+                id="vehicle-id"
+                class="app-input"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="9007199254740991"
+                aria-describedby="vehicle-feedback"
+                required
+                disabled
+              >
+
+              <button
+                id="vehicle-submit"
+                class="btn btn-accent"
+                type="submit"
+                disabled
+              >
+                Conectar
+              </button>
+            </div>
+
+            <p id="vehicle-feedback" role="status"></p>
+          </form>
         </div>
-        <section class="connectivity-panel" aria-label="Estado de conectividad">
-          <div class="connectivity-item" id="ws-connectivity" data-state="checking">
+
+        <section
+          class="connectivity-panel"
+          aria-label="Estado de conectividad"
+        >
+          <div
+            class="connectivity-item"
+            id="ws-connectivity"
+            data-state="checking"
+          >
             <span class="status-light" aria-hidden="true"></span>
-            <span class="connectivity-copy"><strong>WebSocket WSS</strong><small id="ws-status-text">Conectando…</small></span>
-            <i class="bi bi-broadcast connectivity-icon" aria-hidden="true"></i>
+
+            <span class="connectivity-copy">
+              <strong>WebSocket WSS</strong>
+              <small id="ws-status-text">Conectando…</small>
+            </span>
+
+            <i
+              class="bi bi-broadcast connectivity-icon"
+              aria-hidden="true"
+            ></i>
           </div>
-          <div class="connectivity-item" id="api-connectivity" data-state="checking">
+
+          <div
+            class="connectivity-item"
+            id="api-connectivity"
+            data-state="checking"
+          >
             <span class="status-light" aria-hidden="true"></span>
-            <span class="connectivity-copy"><strong>Servidor AWS · API</strong><small id="api-status-text">Comprobando…</small></span>
-            <i class="bi bi-cloud-check connectivity-icon" aria-hidden="true"></i>
+
+            <span class="connectivity-copy">
+              <strong>Servidor AWS · API</strong>
+              <small id="api-status-text">Comprobando…</small>
+            </span>
+
+            <i
+              class="bi bi-cloud-check connectivity-icon"
+              aria-hidden="true"
+            ></i>
           </div>
-          <div class="connectivity-item" id="rds-connectivity" data-state="unknown">
+
+          <div
+            class="connectivity-item"
+            id="rds-connectivity"
+            data-state="unknown"
+          >
             <span class="status-light" aria-hidden="true"></span>
-            <span class="connectivity-copy"><strong>Amazon RDS</strong><small id="rds-status-text">Sin verificar</small></span>
-            <i class="bi bi-database-check connectivity-icon" aria-hidden="true"></i>
+
+            <span class="connectivity-copy">
+              <strong>Amazon RDS</strong>
+              <small id="rds-status-text">Sin verificar</small>
+            </span>
+
+            <i
+              class="bi bi-database-check connectivity-icon"
+              aria-hidden="true"
+            ></i>
           </div>
         </section>
-        <p class="connectivity-note mb-0">La sesión WSS corresponde al navegador; no confirma que el microcontrolador esté conectado. La API se comprueba mediante <code>/health</code>.</p>
+
+        <p class="connectivity-note mb-0">
+          La sesión WSS corresponde al navegador; no confirma que el
+          microcontrolador esté conectado. La API se comprueba mediante
+          <code>/health</code>.
+        </p>
       </div>
     </header>
 
-    <main id="main-content" class="container-fluid app-container main-content">
-      <div id="global-alert" class="global-alert" role="status" aria-live="polite" hidden></div>
-
-      <section class="access-card panel-card" aria-labelledby="access-title">
-        <div class="access-icon"><i class="bi bi-shield-lock"></i></div>
-        <div class="access-copy">
-          <h2 id="access-title">Habilitar controles</h2>
-          <p>Introduce tu clave de control. Se conserva únicamente en la memoria de esta pestaña y no se guarda en GitHub ni en el navegador.</p>
-        </div>
-        <form id="auth-form" class="access-form" autocomplete="off">
-          <label class="visually-hidden" for="api-key-input">Clave API de control</label>
-          <input id="api-key-input" class="form-control app-input" type="password" placeholder="Clave de control (X-API-Key)" autocomplete="new-password" spellcheck="false">
-          <button id="auth-submit" class="btn btn-accent" type="submit"><i class="bi bi-unlock"></i><span>Habilitar</span></button>
-          <button id="auth-clear" class="btn btn-quiet" type="button" hidden aria-label="Limpiar clave"><i class="bi bi-x-lg"></i></button>
-        </form>
-        <p id="auth-feedback" class="access-feedback mb-0" role="status" aria-live="polite">Los controles permanecen bloqueados hasta introducir una clave.</p>
-      </section>
+    <main
+      id="main-content"
+      class="container-fluid app-container main-content"
+    >
+      <div
+        id="global-alert"
+        class="global-alert"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
 
       <div class="section-heading">
         <div>
           <p class="eyebrow">PANEL DE OPERACIÓN</p>
           <h2>Control del vehículo</h2>
         </div>
-        <div class="vehicle-state-chip" id="vehicle-state-chip" data-state="unknown"><span class="status-light"></span><span id="vehicle-state-text">Estado físico sin verificar</span></div>
+
+        <div
+          class="vehicle-state-chip"
+          id="vehicle-state-chip"
+          data-state="unknown"
+        >
+          <span class="status-light"></span>
+
+          <span id="vehicle-state-text">
+            Estado físico sin verificar
+          </span>
+        </div>
       </div>
 
       <div class="control-grid">
-        <section class="panel-card joystick-card" aria-labelledby="joystick-title">
+        <section
+          class="panel-card joystick-card"
+          aria-labelledby="joystick-title"
+        >
           <div class="panel-heading">
             <div>
               <p class="eyebrow">MOVIMIENTO DIRECCIONAL</p>
               <h3 id="joystick-title">Joystick</h3>
             </div>
+
             <span class="panel-index">01</span>
           </div>
+
           <p class="panel-description">
-  Arrastra o usa las flechas. Al soltar, se solicita DETENER.
-</p>
+            Arrastra o usa las flechas. Al soltar, se solicita DETENER.
+          </p>
+
           <div class="joystick-stage">
-            <div class="joystick-direction direction-up"><i class="bi bi-chevron-up"></i><span>AVANZAR</span></div>
-            <div class="joystick-direction direction-right"><i class="bi bi-chevron-right"></i><span>DERECHA</span></div>
-            <div class="joystick-direction direction-down"><i class="bi bi-chevron-down"></i><span>RETROCEDER</span></div>
-            <div class="joystick-direction direction-left"><i class="bi bi-chevron-left"></i><span>IZQUIERDA</span></div>
-            <div id="joystick" class="joystick" role="group" aria-label="Joystick direccional. Usa las flechas del teclado o WASD. Suelta para solicitar detener." tabindex="0" aria-disabled="true">
+            <div class="joystick-direction direction-up">
+              <i class="bi bi-chevron-up"></i>
+              <span>AVANZAR</span>
+            </div>
+
+            <div class="joystick-direction direction-right">
+              <i class="bi bi-chevron-right"></i>
+              <span>DERECHA</span>
+            </div>
+
+            <div class="joystick-direction direction-down">
+              <i class="bi bi-chevron-down"></i>
+              <span>RETROCEDER</span>
+            </div>
+
+            <div class="joystick-direction direction-left">
+              <i class="bi bi-chevron-left"></i>
+              <span>IZQUIERDA</span>
+            </div>
+
+            <div
+              id="joystick"
+              class="joystick"
+              role="group"
+              aria-label="Joystick direccional. Usa las flechas del teclado o WASD. Suelta para solicitar detener."
+              tabindex="0"
+              aria-disabled="true"
+            >
               <div class="joystick-track" aria-hidden="true"></div>
-              <div id="joystick-knob" class="joystick-knob" aria-hidden="true"><span><i class="bi bi-arrows-move"></i></span></div>
+
+              <div
+                id="joystick-knob"
+                class="joystick-knob"
+                aria-hidden="true"
+              >
+                <span><i class="bi bi-arrows-move"></i></span>
+              </div>
+
               <div class="joystick-center" aria-hidden="true"></div>
             </div>
           </div>
-          <div class="joystick-footer">
-            <span id="joystick-status" class="joystick-status"><i class="bi bi-circle-fill"></i> Zona neutral</span>
-            <span id="joystick-availability" class="muted-text">Esperando catálogo</span>
-          </div>
-          <div class="stop-zone">
-  <button
-    id="stop-button"
-    class="btn stop-button"
-    type="button"
-    disabled
-  >
-    <i class="bi bi-stop-circle-fill"></i>
-    <span>DETENER</span>
-    <small>Prioridad de seguridad</small>
-  </button>
 
-  <p id="stop-help" class="stop-help">
-    Se habilitará cuando la API confirme un comando DETENER en el catálogo.
-  </p>
-</div>
-          <div id="direction-availability" class="direction-availability" aria-label="Comandos direccionales disponibles"></div>
+          <div class="joystick-footer">
+            <span id="joystick-status" class="joystick-status">
+              <i class="bi bi-circle-fill"></i>
+              Zona neutral
+            </span>
+
+            <span id="joystick-availability" class="muted-text">
+              Esperando catálogo
+            </span>
+          </div>
+
+          <div class="stop-zone">
+            <button
+              id="stop-button"
+              class="btn stop-button"
+              type="button"
+              disabled
+            >
+              <i class="bi bi-stop-circle-fill"></i>
+              <span>DETENER</span>
+              <small>Prioridad de seguridad</small>
+            </button>
+
+            <p id="stop-help" class="stop-help">
+              Se habilitará cuando la API confirme un comando
+              DETENER en el catálogo.
+            </p>
+          </div>
+
+          <div
+            id="direction-availability"
+            class="direction-availability"
+            aria-label="Comandos direccionales disponibles"
+          ></div>
         </section>
 
-        <section class="panel-card operations-card" aria-labelledby="operations-title">
+        <section
+          class="panel-card operations-card"
+          aria-labelledby="operations-title"
+        >
           <div class="panel-heading">
             <div>
               <p class="eyebrow">ACCIONES DEL CATÁLOGO</p>
               <h3 id="operations-title">Controles secundarios</h3>
             </div>
+
             <span class="panel-index">02</span>
           </div>
-          <p class="panel-description">Los botones se generan exclusivamente a partir de los comandos activos recibidos desde la API.</p>
-          <div id="command-buttons" class="command-grid" aria-live="polite">
-            <div class="empty-state"><i class="bi bi-arrow-repeat"></i><span>Cargando catálogo de comandos…</span></div>
+
+          <p class="panel-description">
+            Los botones se generan a partir de los comandos activos
+            recibidos desde la API.
+          </p>
+
+          <div
+            id="command-buttons"
+            class="command-grid"
+            aria-live="polite"
+          >
+            <div class="empty-state">
+              <i class="bi bi-arrow-repeat"></i>
+              <span>Cargando catálogo de comandos…</span>
+            </div>
           </div>
         </section>
 
-        <section class="panel-card demo-card" aria-labelledby="demo-title">
+        <section
+          class="panel-card demo-card"
+          aria-labelledby="demo-title"
+        >
           <div class="panel-heading">
             <div>
               <p class="eyebrow">SECUENCIAS DEL SERVIDOR</p>
               <h3 id="demo-title">Ejecución de DEMO</h3>
             </div>
+
             <span class="panel-index">03</span>
           </div>
-          <p class="panel-description">Selecciona una DEMO existente. La secuencia, el orden y los tiempos los controla FastAPI; el navegador solo recibe sus eventos WSS. El estado de una DEMO iniciada antes de abrir esta pestaña no puede consultarse con el contrato actual.</p>
+
+          <p class="panel-description">
+            Selecciona una DEMO existente. La secuencia, el orden y
+            los tiempos los controla FastAPI; el navegador recibe
+            sus eventos WSS. El estado de una DEMO iniciada antes de
+            abrir esta pestaña no puede consultarse con el contrato actual.
+          </p>
+
           <div class="demo-controls">
-            <label for="demo-select" class="form-label">DEMO disponible</label>
-            <select id="demo-select" class="form-select app-input" disabled>
+            <label for="demo-select" class="form-label">
+              DEMO disponible
+            </label>
+
+            <select
+              id="demo-select"
+              class="form-select app-input"
+              disabled
+            >
               <option value="">Cargando DEMO…</option>
             </select>
+
             <div class="demo-actions">
-              <button id="demo-start" class="btn btn-accent" type="button" disabled><i class="bi bi-play-fill"></i> Iniciar DEMO</button>
-              <button id="demo-cancel" class="btn btn-danger-soft" type="button" disabled><i class="bi bi-stop-fill"></i> Cancelar DEMO activa</button>
+              <button
+                id="demo-start"
+                class="btn btn-accent"
+                type="button"
+                disabled
+              >
+                <i class="bi bi-play-fill"></i>
+                Iniciar DEMO
+              </button>
+
+              <button
+                id="demo-cancel"
+                class="btn btn-danger-soft"
+                type="button"
+                disabled
+              >
+                <i class="bi bi-stop-fill"></i>
+                Cancelar DEMO activa
+              </button>
             </div>
           </div>
+
           <div class="demo-status-box" aria-live="polite">
-            <div class="demo-status-top"><span id="demo-status-label" class="demo-status-label" data-state="idle">Sin DEMO en ejecución</span><span id="demo-progress-text" class="muted-text">—</span></div>
-            <div class="progress demo-progress" role="progressbar" aria-label="Avance de DEMO" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="demo-progress-bar" class="progress-bar" style="width:0%"></div></div>
-            <p id="demo-current-step" class="demo-current-step mb-0">Los eventos de ejecución aparecerán aquí cuando el WebSocket esté conectado.</p>
+            <div class="demo-status-top">
+              <span
+                id="demo-status-label"
+                class="demo-status-label"
+                data-state="idle"
+              >
+                Sin DEMO en ejecución
+              </span>
+
+              <span id="demo-progress-text" class="muted-text">
+                —
+              </span>
+            </div>
+
+            <div
+              class="progress demo-progress"
+              role="progressbar"
+              aria-label="Avance de DEMO"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
+              <div
+                id="demo-progress-bar"
+                class="progress-bar"
+                style="width: 0%"
+              ></div>
+            </div>
+
+            <p id="demo-current-step" class="demo-current-step mb-0">
+              Los eventos de ejecución aparecerán aquí cuando
+              el WebSocket esté conectado.
+            </p>
           </div>
         </section>
 
-        <section class="panel-card action-card" aria-labelledby="action-title">
+        <section
+          class="panel-card action-card"
+          aria-labelledby="action-title"
+        >
           <div class="panel-heading">
             <div>
               <p class="eyebrow">RESPUESTA DEL SISTEMA</p>
               <h3 id="action-title">Mensajes de acción</h3>
             </div>
+
             <span class="panel-index">04</span>
           </div>
-          <div class="action-message" id="action-message" data-tone="neutral" role="status" aria-live="polite">
-            <span class="action-message-icon"><i class="bi bi-info-circle"></i></span>
-            <div><strong id="action-message-title">Sistema preparado</strong><p id="action-message-text">Conecta con la API, carga el catálogo e introduce tu clave para habilitar el control.</p><small id="action-message-time">Esperando actividad</small></div>
+
+          <div
+            class="action-message"
+            id="action-message"
+            data-tone="neutral"
+            role="status"
+            aria-live="polite"
+          >
+            <span class="action-message-icon">
+              <i class="bi bi-info-circle"></i>
+            </span>
+
+            <div>
+              <strong id="action-message-title">
+                Sistema preparado
+              </strong>
+
+              <p id="action-message-text">
+                Los controles se habilitan al verificar la conexión
+                y cargar el catálogo del carrito.
+              </p>
+
+              <small id="action-message-time">
+                Esperando actividad
+              </small>
+            </div>
           </div>
-          <div class="action-footnote"><i class="bi bi-info-circle"></i><span>Una respuesta HTTP 201 o un evento WSS confirma el registro o la notificación del backend, no la ejecución física del vehículo.</span></div>
+
+          <div class="action-footnote">
+            <i class="bi bi-info-circle"></i>
+
+            <span>
+              Una respuesta HTTP 201 o un evento WSS confirma
+              el registro o la notificación del backend,
+              no la ejecución física del vehículo.
+            </span>
+          </div>
         </section>
       </div>
     </main>
 
     <footer class="app-footer">
       <div class="container-fluid app-container footer-content">
-        <span class="footer-brand"><i class="bi bi-cpu"></i> CONTROL IoT</span>
-        <span class="footer-credit">Desarrollado por <strong>Yolotzin Dolores Granados Mendoza</strong> · 2026</span>
-        <span class="footer-note">Interfaz de control · Proyecto IoT</span>
+        <span class="footer-brand">
+          <i class="bi bi-cpu"></i>
+          CONTROL IoT
+        </span>
+
+        <span class="footer-credit">
+          Desarrollado por
+          <strong>Yolotzin Dolores Granados Mendoza</strong>
+          · 2026
+        </span>
+
+        <span class="footer-note">
+          Interfaz de control · Proyecto IoT
+        </span>
       </div>
     </footer>
   </div>

@@ -29,7 +29,6 @@ import { $, setText } from './utils/dom.js';
 import { friendlyError } from './utils/errors.js';
 import { expectArray, validateCommand } from './utils/validation.js';
 
-// Servicios de la API.
 const http = new HttpClient(
   APP_CONFIG.API_BASE_URL,
   APP_CONFIG.REQUEST_TIMEOUT_MS
@@ -46,12 +45,10 @@ const commandApi = new CommandApi(
 const demoApi = new DemoApi(http, APP_CONFIG.VEHICLE_ID);
 const healthApi = new HealthApi(http, APP_CONFIG.HEALTH_PATH);
 
-// Vistas.
 const dashboardView = new DashboardView();
 const connectivityView = new ConnectivityView();
 const notifications = new NotificationsView();
 
-// Estado del carrito seleccionado.
 let vehicleId = APP_CONFIG.VEHICLE_ID;
 let switchingVehicle = false;
 let demoRequests = 0;
@@ -69,10 +66,8 @@ let joystickView;
 let controlsView;
 let demoView;
 
-// Permisos de control.
 function hasApiControlAccess() {
   return !switchingVehicle
-    && http.hasApiKey()
     && apiReady
     && rdsReady
     && vehicleActive;
@@ -82,115 +77,101 @@ function hasControlAccess() {
   return hasApiControlAccess() && Boolean(stopCommand);
 }
 
+function manualControlActive() {
+  return joystickController.currentDirection !== 'neutral'
+    || controlsView.palaJoystick.currentDirection !== 'neutral';
+}
+
+function neutralizeBoth(sendStop = true) {
+  joystickView?.forceNeutral({ sendStop });
+  controlsView?.palaJoystick?.forceNeutral({ sendStop });
+}
+
 function updateControlAvailability() {
-  const enabled = hasControlAccess();
   const demoActive = demoController?.isActive() || false;
+  const enabled = hasControlAccess() && !demoActive;
 
-  const stopAccess = http.hasApiKey()
-    && vehicleActive
-    && (Boolean(stopCommand) || demoActive);
-
-  const joystickEnabled = enabled
-    && !demoActive
+  const movementEnabled = enabled
     && Object.values(directionCommands).some(Boolean);
 
-  joystickController?.setEnabled(joystickEnabled);
-  joystickView?.setEnabled(joystickEnabled);
-  controlsView?.setEnabled(enabled && !demoActive);
+  // Neutraliza antes de deshabilitar para solicitar DETENER
+  // si había movimiento.
+  if (!movementEnabled) {
+    joystickView?.forceNeutral();
+  }
+
+  joystickController?.setEnabled(movementEnabled);
+  joystickView?.setEnabled(movementEnabled);
+  controlsView?.setEnabled(enabled);
 
   demoView?.setAvailability({
     enabled: hasApiControlAccess(),
-    cancelEnabled: http.hasApiKey() && vehicleActive,
+    cancelEnabled: !switchingVehicle && vehicleActive,
     active: demoActive,
   });
 
-  const canStop = stopAccess && (demoActive || Boolean(stopCommand));
+  const canStop = !switchingVehicle
+    && vehicleActive
+    && (Boolean(stopCommand) || demoActive);
 
-  let stopHelp =
-    'El catálogo no contiene un comando DETENER activo; no se enviará una orden inventada.';
+  const help = demoActive
+    ? 'DETENER prioriza la cancelación de la DEMO activa.'
+    : stopCommand
+      ? 'DETENER tiene prioridad sobre movimientos pendientes.'
+      : 'El catálogo debe contener un comando DETENER activo.';
 
-  if (demoActive) {
-    stopHelp = 'DETENER prioriza la cancelación de la DEMO activa.';
-  } else if (stopCommand) {
-    stopHelp =
-      'La orden DETENER se enviará con prioridad sobre movimientos pendientes.';
-  }
-
-  controlsView?.setStopEnabled(canStop, stopHelp);
+  controlsView?.setStopEnabled(canStop, help);
 }
 
-// Mensajes de las órdenes manuales.
+function showError(title, error) {
+  notifications.show(title, friendlyError(error), 'error');
+}
+
 function handleCommandState(payload) {
   if (payload.isStop || payload.state === 'stopping') {
-    let state = 'sending';
-
-    if (payload.state === 'error') {
-      state = 'error';
-    } else if (payload.state === 'stopped') {
-      state = 'accepted';
-    }
-
-    controlsView?.setStopState(state);
-  } else if (
-    payload.source === 'joystick'
-    && ['sending', 'accepted', 'error'].includes(payload.state)
-  ) {
+    controlsView?.setStopState(
+      payload.state === 'error'
+        ? 'error'
+        : payload.state === 'stopped'
+          ? 'accepted'
+          : 'sending'
+    );
+  } else if (payload.source === 'joystick') {
     joystickView?.setCommandState(payload.state);
   }
-
-  const commandName = payload.command?.nombre || 'Comando';
 
   if (payload.state === 'sending') {
     notifications.show(
       'Enviando comando',
-      `${commandName}: solicitud POST enviada a FastAPI.`,
+      payload.command?.nombre || 'Comando',
       'warning'
     );
-  }
-
-  if (payload.state === 'accepted') {
+  } else if (payload.state === 'accepted') {
     notifications.show(
       'Comando registrado',
-      `${payload.response.comando} fue registrado por RDS. Clientes WebSocket notificados: ${payload.response.clientes_notificados}. Esto no confirma ejecución física.`,
+      `${payload.response.comando} registrado. Clientes notificados: ${payload.response.clientes_notificados}. La ejecución física no está confirmada.`,
       'success'
     );
-  }
-
-  if (payload.state === 'stopped') {
+  } else if (payload.state === 'stopped') {
     notifications.show(
       'DETENER registrado',
-      'La API confirmó el registro del comando DETENER. La ejecución física no está confirmada por esta respuesta.',
+      'La API confirmó el registro de DETENER.',
       'success'
     );
-  }
-
-  if (payload.state === 'stopping') {
+  } else if (payload.state === 'stopping') {
     notifications.show(
       'Prioridad de detención',
       payload.message,
       'warning'
     );
-  }
-
-  if (payload.state === 'error') {
-    notifications.show(
+  } else if (payload.state === 'error') {
+    showError(
       'No se pudo confirmar el comando',
-      friendlyError(payload.error),
-      'error'
+      payload.error
     );
-
-    if (
-      payload.error?.status === 401
-      || payload.error?.status === 403
-    ) {
-      clearAccess(
-        'La API rechazó la clave de control. Introdúcela nuevamente.'
-      );
-    }
   }
 }
 
-// Dirección WebSocket del carrito seleccionado.
 function socketUrl(id) {
   return new URL(
     String(id),
@@ -211,7 +192,7 @@ const websocketClient = new WebSocketClient(socketUrl(vehicleId), {
   onError: () => {
     notifications.show(
       'Problema con WebSocket',
-      'No se pudo mantener la sesión WSS. Comprueba la confianza del certificado OpenSSL, el puerto 8000 y la conectividad.',
+      'Comprueba la conexión WSS y el certificado del servidor.',
       'warning'
     );
   },
@@ -219,7 +200,6 @@ const websocketClient = new WebSocketClient(socketUrl(vehicleId), {
   onMessage: handleWebSocketMessage,
 });
 
-// Indicadores de conexión.
 const connectivityController = new ConnectivityController({
   healthApi,
   websocketClient,
@@ -228,23 +208,23 @@ const connectivityController = new ConnectivityController({
   onState: (state) => {
     connectivityView.render(state);
 
-    apiReady = state.api === 'online';
-    rdsReady = state.rds === 'online';
+    // Una comprobación periódica pendiente conserva
+    // el último resultado y no interrumpe el arrastre.
+    if (state.api !== 'checking') {
+      apiReady = state.api === 'online';
+      rdsReady = state.rds === 'online';
+    }
 
     updateControlAvailability();
 
-    if (state.api === 'offline') {
-      dashboardView.showGlobalAlert(
-        `No se pudo verificar la API AWS: ${state.healthMessage || 'sin respuesta'}`
-      );
-    } else {
-      dashboardView.showGlobalAlert('');
-    }
+    dashboardView.showGlobalAlert(
+      state.api === 'offline'
+        ? `No se pudo verificar AWS: ${state.healthMessage || 'sin respuesta'}`
+        : ''
+    );
   },
 });
 
-// Cuenta las solicitudes DEMO pendientes para evitar cambiar
-// de carrito mientras una operación todavía está respondiendo.
 async function runDemoRequest(action) {
   demoRequests += 1;
 
@@ -260,7 +240,7 @@ const dispatcher = new CommandDispatcher({
   hasAccess: hasControlAccess,
 
   hasStopAccess: () => {
-    return http.hasApiKey()
+    return !switchingVehicle
       && vehicleActive
       && Boolean(stopCommand);
   },
@@ -274,7 +254,6 @@ const dispatcher = new CommandDispatcher({
   onState: handleCommandState,
 });
 
-// Joystick.
 joystickController = new JoystickController({
   dispatcher,
 
@@ -298,34 +277,29 @@ joystickView = new JoystickView({
   joystickController,
 });
 
-// Botones manuales y DETENER.
 controlsView = new ControlsView({
   dispatcher,
+
   onCommand: async (command, button) => {
     controlsView.setButtonState(button, 'sending');
 
     try {
-      await dispatcher.send(command, {
+      const result = await dispatcher.send(command, {
         source: 'button',
       });
 
-      controlsView.setButtonState(button, 'accepted');
+      controlsView.setButtonState(
+        button,
+        result?.ignored ? 'normal' : 'accepted'
+      );
     } catch (error) {
       controlsView.setButtonState(button, 'error');
-
-      notifications.show(
-        'Acción no enviada',
-        friendlyError(error),
-        'error'
-      );
+      showError('Acción no enviada', error);
     }
   },
 
   onStop: async () => {
-    joystickView.forceNeutral({
-      sendStop: false,
-    });
-
+    neutralizeBoth(false);
     controlsView.setStopState('sending');
 
     try {
@@ -333,48 +307,18 @@ controlsView = new ControlsView({
       controlsView.setStopState('accepted');
     } catch (error) {
       controlsView.setStopState('error');
-
-      notifications.show(
-        'No se pudo detener',
-        friendlyError(error),
-        'error'
-      );
+      showError('No se pudo detener', error);
     }
   },
-  onStop: async () => {
-  joystickView.forceNeutral({
-    sendStop: false,
-  });
-
-  controlsView.palaJoystick.forceNeutral({
-    sendStop: false,
-  });
-
-  controlsView.setStopState('sending');
-
-  try {
-    await dispatcher.stop();
-    controlsView.setStopState('accepted');
-  } catch (error) {
-    controlsView.setStopState('error');
-
-    notifications.show(
-      'No se pudo detener',
-      friendlyError(error),
-      'error'
-    );
-  }
-},
 });
 
-// Se crea un controlador nuevo al cambiar de carrito.
 function createDemoController() {
   return new DemoController({
     demoApi,
     hasAccess: hasApiControlAccess,
 
     hasCancelAccess: () => {
-      return http.hasApiKey() && vehicleActive;
+      return !switchingVehicle && vehicleActive;
     },
 
     onState: (payload) => {
@@ -384,67 +328,49 @@ function createDemoController() {
         controlsView?.setStopState('error');
       }
 
-      if (
-        payload.state === 'error'
-        && (
-          payload.error?.status === 401
-          || payload.error?.status === 403
-        )
-      ) {
-        clearAccess(
-          'La API rechazó la clave de control. Introdúcela nuevamente.'
-        );
+      if (payload.state === 'cancelled') {
+        controlsView?.setStopState('accepted');
       }
 
       updateControlAvailability();
 
-      if (payload.state === 'starting') {
-        notifications.show(
+      const messages = {
+        starting: [
           'Iniciando DEMO',
-          'La solicitud fue enviada al backend. El navegador no reproduce la secuencia.',
-          'warning'
-        );
-      }
-
-      if (payload.state === 'accepted') {
-        notifications.show(
+          'Solicitud enviada al servidor.',
+          'warning',
+        ],
+        accepted: [
           'DEMO aceptada',
-          'FastAPI aceptó la ejecución. Esperando eventos de avance por WSS.',
-          'success'
-        );
-      }
+          'Esperando eventos de avance por WSS.',
+          'success',
+        ],
+        uncertain: [
+          'Resultado incierto',
+          'No repitas el inicio. Puedes intentar cancelar la DEMO.',
+          'warning',
+        ],
+        finished: [
+          'DEMO finalizada',
+          'El servidor notificó demo_fin.',
+          'success',
+        ],
+        cancelled: [
+          'DEMO cancelada',
+          'El servidor confirmó la cancelación.',
+          'warning',
+        ],
+      };
 
-      if (payload.state === 'uncertain') {
-        notifications.show(
-          'Resultado incierto de DEMO',
-          'No repitas el inicio. El servidor podría haber aceptado la solicitud; utiliza Cancelar DEMO activa para intentar detenerla.',
-          'warning'
-        );
+      if (messages[payload.state]) {
+        notifications.show(...messages[payload.state]);
       }
 
       if (payload.state === 'step') {
         notifications.show(
-          'Movimiento de DEMO recibido',
+          'Movimiento de DEMO',
           `${payload.message.comando} · paso ${payload.currentOrder} de ${payload.total || '?'}.`,
           'neutral'
-        );
-      }
-
-      if (payload.state === 'finished') {
-        notifications.show(
-          'DEMO finalizada',
-          'El servidor notificó demo_fin.',
-          'success'
-        );
-      }
-
-      if (payload.state === 'cancelled') {
-        controlsView?.setStopState('accepted');
-
-        notifications.show(
-          'DEMO cancelada',
-          'El servidor confirmó la cancelación.',
-          'warning'
         );
       }
 
@@ -461,7 +387,6 @@ function createDemoController() {
 
 demoController = createDemoController();
 
-// Interfaz de DEMO.
 demoView = new DemoView({
   onSelect: (id) => {
     demoController.select(id);
@@ -469,69 +394,39 @@ demoView = new DemoView({
   },
 
   onStart: async () => {
-    if (
-  joystickController.currentDirection !== 'neutral'
-  || controlsView.palaJoystick.currentDirection !== 'neutral'
-  || dispatcher.isBusy()
-) {
-  notifications.show(
-    'Control ocupado',
-    'Suelta ambas palancas y espera a que termine la orden pendiente antes de iniciar una DEMO.',
-    'warning'
-  );
-  return;
-}
+    if (manualControlActive() || dispatcher.isBusy()) {
+      notifications.show(
+        'Control ocupado',
+        'Suelta ambas palancas y espera la orden pendiente.',
+        'warning'
+      );
+      return;
+    }
 
     try {
       await runDemoRequest(() => demoController.start());
     } catch (error) {
-      notifications.show(
-        'No se pudo iniciar la DEMO',
-        friendlyError(error),
-        'error'
-      );
+      showError('No se pudo iniciar la DEMO', error);
     }
   },
 
   onCancel: async () => {
-    const demoWasAlreadyActive = demoController.isActive();
-
-    const manualControlNeedsStop = !demoWasAlreadyActive
-      && (
-        joystickController.currentDirection !== 'neutral'
-        || dispatcher.isBusy()
-      );
-
-    if (manualControlNeedsStop) {
-      joystickView.forceNeutral({
-        sendStop: false,
-      });
-
-      try {
-        await dispatcher.stop();
-      } catch (error) {
-        notifications.show(
-          'No se pudo detener el movimiento manual',
-          friendlyError(error),
-          'error'
-        );
-        return;
-      }
-    }
-
     try {
+      if (
+        !demoController.isActive()
+        && (manualControlActive() || dispatcher.isBusy())
+      ) {
+        neutralizeBoth(false);
+        await dispatcher.stop();
+      }
+
       await runDemoRequest(() => demoController.cancel());
     } catch (error) {
-      notifications.show(
-        'No se pudo cancelar la DEMO',
-        friendlyError(error),
-        'error'
-      );
+      showError('No se pudo cancelar la DEMO', error);
     }
   },
 });
 
-// Eventos del carrito seleccionado.
 function handleWebSocketMessage(message) {
   if (!message || typeof message.tipo !== 'string') {
     return;
@@ -539,7 +434,7 @@ function handleWebSocketMessage(message) {
 
   if (
     message.id_vehiculo != null
-    && Number(message.id_vehiculo) !== vehicleId
+    && Number(message.id_vehiculo) !== Number(vehicleId)
   ) {
     return;
   }
@@ -558,124 +453,41 @@ function handleWebSocketMessage(message) {
     }
   } else if (message.tipo === 'movimiento') {
     notifications.show(
-      'Evento de movimiento recibido',
-      `${message.comando || 'Comando'} · código ${message.codigo ?? '—'} · vehículo ${message.id_vehiculo}. Notificación WSS recibida; no confirma ejecución física.`,
+      'Evento de movimiento',
+      `${message.comando || 'Comando'} · vehículo ${message.id_vehiculo}. WSS no confirma ejecución física.`,
       'success'
     );
   } else if (message.tipo === 'error') {
     notifications.show(
       'Error reportado por WSS',
-      message.mensaje || 'El servidor reportó un error.',
+      message.mensaje || 'Error del servidor.',
       'error'
     );
   }
 }
 
-// Clave de control.
-async function clearAccess(
-  message = 'Clave eliminada de la memoria de esta pestaña.',
-  { stopFirst = false } = {}
-) {
-  if (
-    stopFirst
-    && http.hasApiKey()
-    && vehicleActive
-    && (stopCommand || demoController?.isActive())
-  ) {
-    joystickView?.forceNeutral({
-      sendStop: false,
-    });
-
-    try {
-      await dispatcher.stop();
-    } catch {
-      // El dispatcher informa del error. Se elimina la clave igualmente.
-    }
-  }
-
-  http.clearApiKey();
-
-  $('#api-key-input').value = '';
-  $('#auth-feedback').dataset.state = 'error';
-
-  setText($('#auth-feedback'), message);
-
-  $('#auth-clear').hidden = true;
-
-  updateControlAvailability();
-}
-
-function bindAuthentication() {
-  $('#auth-form').addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    const value = $('#api-key-input').value.trim();
-
-    if (!value) {
-      $('#auth-feedback').dataset.state = 'error';
-
-      setText(
-        $('#auth-feedback'),
-        'Escribe la clave de control. No se enviará ni almacenará vacía.'
-      );
-      return;
-    }
-
-    http.setApiKey(value);
-
-    $('#auth-feedback').dataset.state = 'ready';
-
-    setText(
-      $('#auth-feedback'),
-      'Clave cargada en memoria. El backend la validará al enviar la primera operación protegida.'
-    );
-
-    $('#auth-clear').hidden = false;
-
-    notifications.show(
-      'Clave cargada',
-      'La clave permanece solo en memoria y se enviará en X-API-Key al ejecutar operaciones.',
-      'success'
-    );
-
-    updateControlAvailability();
-  });
-
-  $('#auth-clear').addEventListener('click', () => {
-    clearAccess(undefined, {
-      stopFirst: true,
-    });
-  });
-}
-
-// Consulta el carrito, sus comandos y sus DEMO.
 async function loadInitialData() {
-  const results = await Promise.allSettled([
+  const [
+    vehicleResult,
+    commandsResult,
+    demosResult,
+  ] = await Promise.allSettled([
     vehicleApi.getVehicle(),
     commandApi.getCommands(),
     demoController.load(),
   ]);
 
-  const [
-    vehicleResult,
-    commandsResult,
-    demosResult,
-  ] = results;
+  vehicleActive = false;
 
   if (vehicleResult.status === 'fulfilled') {
-    const vehicle = vehicleResult.value;
-
-    vehicleActive = vehicle.activo === true;
-    dashboardView.renderVehicle(vehicle);
+    vehicleActive = vehicleResult.value.activo === true;
+    dashboardView.renderVehicle(vehicleResult.value);
   } else {
     dashboardView.showGlobalAlert(
       `No se pudo consultar el vehículo: ${friendlyError(vehicleResult.reason)}`
     );
 
-    setText(
-      $('#vehicle-name'),
-      'Carrito no disponible'
-    );
+    setText($('#vehicle-name'), 'Carrito no disponible');
 
     setText(
       $('#vehicle-feedback'),
@@ -683,14 +495,15 @@ async function loadInitialData() {
     );
   }
 
-  if (commandsResult.status === 'fulfilled') {
-    const received = expectArray(
-      commandsResult.value,
-      'comandos'
-    );
+  try {
+    if (commandsResult.status === 'rejected') {
+      throw commandsResult.reason;
+    }
 
-    const valid = received.filter(validateCommand);
-    const catalog = activeCommands(valid);
+    const catalog = activeCommands(
+      expectArray(commandsResult.value, 'comandos')
+        .filter(validateCommand)
+    );
 
     directionCommands = resolveDirections(catalog);
     stopCommand = findStopCommand(catalog);
@@ -701,48 +514,43 @@ async function loadInitialData() {
     controlsView.render(getSecondaryCommands(catalog));
 
     if (!stopCommand) {
-      controlsView.setStopEnabled(
-        false,
-        'El catálogo activo no contiene DETENER. No se puede enviar una orden de parada inexistente.'
-      );
-
       notifications.show(
-        'Falta comando DETENER',
-        'El catálogo real no contiene un comando DETENER activo. El botón permanecerá deshabilitado.',
+        'Falta DETENER',
+        'El catálogo debe incluir DETENER para habilitar movimientos manuales.',
         'warning'
       );
     }
-  } else {
-    controlsView.render([]);
-    joystickView.renderAvailability({});
+  } catch (error) {
+    directionCommands = {};
+    stopCommand = null;
 
-    notifications.show(
-      'No se pudo cargar el catálogo',
-      friendlyError(commandsResult.reason),
-      'error'
-    );
+    dispatcher.setStopCommand(null);
+    joystickController.setCatalog({});
+    joystickView.renderAvailability({});
+    controlsView.render([]);
+
+    showError('No se pudo cargar el catálogo', error);
   }
 
   if (demosResult.status === 'fulfilled') {
     demoView.renderDemos(demoController.demos);
     demoView.setSelected(demoController.selectedId);
-    demoView.renderState({
-      state: 'idle',
-    });
+
+    if (!demoController.isActive()) {
+      demoView.renderState({ state: 'idle' });
+    }
   } else {
     demoView.renderDemos([]);
 
-    notifications.show(
+    showError(
       'No se pudieron cargar las DEMO',
-      friendlyError(demosResult.reason),
-      'error'
+      demosResult.reason
     );
   }
 
   updateControlAvailability();
 }
 
-// Cambio de carrito desde el formulario.
 function bindVehicleSelection() {
   const input = $('#vehicle-id');
   const submit = $('#vehicle-submit');
@@ -765,63 +573,41 @@ function bindVehicleSelection() {
       return;
     }
 
-
     if (
       dispatcher.isBusy()
       || demoRequests
       || demoController.isActive()
-      || joystickController.currentDirection !== 'neutral'
+      || manualControlActive()
     ) {
       setText(
         feedback,
-        'Suelta el joystick, cancela la DEMO activa y espera las órdenes pendientes antes de cambiar de carrito.'
+        'Suelta ambas palancas, cancela la DEMO y espera las órdenes pendientes.'
       );
       return;
     }
-    if (
-  dispatcher.isBusy()
-  || demoRequests
-  || demoController.isActive()
-  || joystickController.currentDirection !== 'neutral'
-  || controlsView.palaJoystick.currentDirection !== 'neutral'
-) {
-  setText(
-    feedback,
-    'Suelta ambas palancas, cancela la DEMO activa y espera las órdenes pendientes antes de cambiar de carrito.'
-  );
-  return;
-}
 
     switchingVehicle = true;
-
     input.disabled = true;
     submit.disabled = true;
+
+    neutralizeBoth(false);
 
     vehicleActive = false;
     directionCommands = {};
     stopCommand = null;
 
     dispatcher.resetVehicle();
-
-    joystickView.forceNeutral({
-      sendStop: false,
-    });
-
     joystickController.setCatalog({});
     joystickView.renderAvailability({});
-
     controlsView.render([]);
     controlsView.setStopState('idle');
 
     demoController = createDemoController();
 
     demoView.renderDemos([]);
-    demoView.renderState({
-      state: 'idle',
-    });
+    demoView.renderState({ state: 'idle' });
 
     updateControlAvailability();
-
     websocketClient.stop();
 
     vehicleId = id;
@@ -831,51 +617,26 @@ function bindVehicleSelection() {
 
     websocketClient.url = socketUrl(id);
 
-    setText(
-      $('#vehicle-name'),
-      'Consultando carrito…'
-    );
-
-    setText(
-      $('#vehicle-meta'),
-      `ID ${id}`
-    );
-
-    setText(
-      feedback,
-      `Consultando carrito ${id}…`
-    );
-
-    notifications.show(
-      'Cambio de carrito',
-      `Cargando controles para el carrito ${id}.`,
-      'neutral'
-    );
+    setText($('#vehicle-name'), 'Consultando carrito…');
+    setText($('#vehicle-meta'), `ID ${id}`);
+    setText(feedback, `Consultando carrito ${id}…`);
 
     try {
       await loadInitialData();
 
       if (vehicleActive) {
         websocketClient.start();
-
-        setText(
-          feedback,
-          `Carrito ${id} seleccionado.`
-        );
+        setText(feedback, `Carrito ${id} seleccionado.`);
       } else if (
         $('#vehicle-name').textContent !== 'Carrito no disponible'
       ) {
-        setText(
-          feedback,
-          `El carrito ${id} está inactivo.`
-        );
+        setText(feedback, `El carrito ${id} está inactivo.`);
       }
     } catch (error) {
       vehicleActive = false;
       setText(feedback, friendlyError(error));
     } finally {
       switchingVehicle = false;
-
       input.disabled = false;
       submit.disabled = false;
 
@@ -884,28 +645,14 @@ function bindVehicleSelection() {
   });
 }
 
-// Neutraliza el joystick cuando la pestaña pierde el foco.
-function bindEmergencyEvents() {
-  window.addEventListener('pagehide', () => {
-    joystickController.setDirection('neutral');
-  });
-
-  window.addEventListener('blur', () => {
-    joystickController.setDirection('neutral');
-  });
-}
-
-// Inicio de la aplicación.
 async function init() {
-  bindAuthentication();
-  bindEmergencyEvents();
+  window.addEventListener('pagehide', () => {
+    neutralizeBoth();
+  });
 
   connectivityController.start();
 
-  setText(
-    $('#vehicle-meta'),
-    `ID ${vehicleId}`
-  );
+  setText($('#vehicle-meta'), `ID ${vehicleId}`);
 
   try {
     await loadInitialData();
@@ -914,24 +661,12 @@ async function init() {
   }
 
   if (
-    location.protocol !== 'https:'
-    && location.hostname !== 'localhost'
-    && location.hostname !== '127.0.0.1'
-  ) {
-    notifications.show(
-      'Origen no seguro',
-      'La publicación debe utilizar HTTPS para conectarse a WSS y evitar contenido mixto.',
-      'error'
-    );
-  }
-
-  if (
     location.protocol === 'https:'
     && !APP_CONFIG.API_BASE_URL.startsWith('https://')
   ) {
     notifications.show(
       'Configuración HTTPS requerida',
-      'La API debe usar HTTPS desde esta página GitHub Pages.',
+      'La API debe usar HTTPS desde GitHub Pages.',
       'error'
     );
   }
@@ -939,12 +674,8 @@ async function init() {
 
 init().catch((error) => {
   dashboardView.showGlobalAlert(
-    `Error al iniciar la interfaz: ${friendlyError(error)}`
+    `Error al iniciar: ${friendlyError(error)}`
   );
 
-  notifications.show(
-    'No se pudo iniciar la aplicación',
-    friendlyError(error),
-    'error'
-  );
+  showError('No se pudo iniciar la aplicación', error);
 });
