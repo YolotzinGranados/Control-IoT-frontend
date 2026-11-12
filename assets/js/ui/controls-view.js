@@ -22,18 +22,10 @@ const PALA_NAMES = {
     'BAJAR_BRAZO',
   ],
   left: [
-    'PALA_IZQUIERDA',
-    'MOVER_PALA_IZQUIERDA',
-    'GIRAR_PALA_IZQUIERDA',
-    'BRAZO_IZQUIERDA',
-    'GIRAR_BRAZO_IZQUIERDA',
+    'ABRIR_PALA',
   ],
   right: [
-    'PALA_DERECHA',
-    'MOVER_PALA_DERECHA',
-    'GIRAR_PALA_DERECHA',
-    'BRAZO_DERECHA',
-    'GIRAR_BRAZO_DERECHA',
+    'CERRAR_PALA',
   ],
 };
 
@@ -45,12 +37,12 @@ const PALA_BUTTONS = [
   },
   {
     direction: 'left',
-    label: 'Pala izquierda',
+    label: 'Abrir pala',
     icon: 'bi-chevron-left',
   },
   {
     direction: 'right',
-    label: 'Pala derecha',
+    label: 'Cerrar pala',
     icon: 'bi-chevron-right',
   },
   {
