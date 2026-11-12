@@ -1,8 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveDirections, findStopCommand, getSecondaryCommands } from '../js/domain/command-catalog.js';
-import { CommandDispatcher } from '../js/domain/command-dispatcher.js';
-import { DemoController } from '../js/domain/demo-controller.js';
+import { resolveDirections,findStopCommand, getSecondaryCommands,
+} from '../assets/js/domain/command-catalog.js';
+
+import {
+  CommandDispatcher,
+} from '../assets/js/domain/command-dispatcher.js';
+
+import { DemoController,} from '../assets/js/domain/demo-controller.js';
 
 const pause = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 
