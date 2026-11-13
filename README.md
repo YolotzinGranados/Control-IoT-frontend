@@ -1,128 +1,268 @@
-<<<<<<< HEAD
-# Control IoT — Frontend
+# 🚗 Sistema de Control y Monitoreo de Vehículos IoT
 
-Aplicación web estática para controlar un vehículo IoT mediante la API FastAPI existente en AWS. Esta práctica implementa únicamente el módulo de **Control**; no crea backend, tablas, Stored Procedures, monitoreo ni administración.
-in
-**Desarrollado por Yolotzin D. Granados Mendoza · 2026**
+Aplicación web desarrollada para controlar y monitorear un vehículo mediante tecnología IoT, integrando una interfaz web, una API REST, comunicación WebSocket segura (WSS), una base de datos relacional y un microcontrolador ESP8266.
 
-## Arquitectura
+El sistema permite enviar comandos de movimiento desde una interfaz web, visualizar eventos de comunicación en tiempo real y consultar los movimientos registrados.
 
-```text
-GitHub Pages (HTTPS)
-  └── HTML5 + Bootstrap 5 + CSS + módulos ES6
-       ├── UI (vistas)
-       ├── Dominio (catálogo, joystick, dispatcher, DEMO)
-       ├── Cliente REST (Fetch)
-       └── Cliente WSS (eventos y reconexión)
-                 │
-                 ▼
-        FastAPI existente en AWS
-          ├── REST /health y /vehiculos/{id}/...
-          ├── WebSocket /ws/vehiculos/{id}
-          └── Stored Procedures existentes → Amazon RDS
+## 🌐 Acceso al proyecto
+
+- **Frontend:** [Control IoT - GitHub Pages](https://yolotzingranados.github.io/Control-IoT-frontend/)
+- **Repositorio Frontend:** [Control-IoT-frontend](https://github.com/YolotzinGranados/Control-IoT-frontend)
+- **Repositorio Backend:** [APIVehiculoWebSocketIoT](https://github.com/YolotzinGranados/APIVehiculoWebSocketIoT)
+
+## 📋 Características principales
+
+La aplicación cuenta con dos vistas principales:
+
+### 1. CONTROL
+
+Interfaz destinada al manejo del vehículo mediante un joystick virtual.
+
+Funciones principales:
+
+- Control de movimientos hacia adelante y atrás.
+- Movimiento hacia la izquierda y derecha.
+- Control de la pala del vehículo.
+- Envío de comandos al servidor mediante comunicación WebSocket.
+- Identificación del vehículo mediante su ID.
+- Modo DEMO para realizar pruebas de funcionamiento de la interfaz.
+- Diseño adaptable a computadoras, tabletas y teléfonos móviles.
+
+### 2. MONITOREO
+
+Interfaz destinada a visualizar los eventos y movimientos registrados por el sistema.
+
+Funciones principales:
+
+- Tarjeta informativa del último movimiento recibido.
+- Visualización de fecha y hora del último evento.
+- Tabla responsiva con el historial de movimientos registrados.
+- Actualización de información mediante WebSocket seguro (WSS).
+- Recuperación de información mediante solicitudes REST.
+- Visualización de registros provenientes del backend.
+- Adaptación de la interfaz a diferentes tamaños de pantalla.
+
+## 🏗️ Arquitectura del sistema
+
+El proyecto utiliza una arquitectura distribuida en la que cada componente cumple una función específica.
+
+| Componente | Función |
+|---|---|
+| Frontend | Interfaz de control y monitoreo. |
+| API REST | Consulta y recuperación de información. |
+| WebSocket WSS | Comunicación de eventos en tiempo real. |
+| Backend FastAPI | Procesamiento de solicitudes y gestión de eventos. |
+| Amazon RDS | Almacenamiento de información e historial. |
+| ESP8266 | Recepción de comandos y control físico del vehículo. |
+
+### Diagrama general de arquitectura
+
+```mermaid
+flowchart TD
+    A[Usuario] --> B[Frontend Web]
+    B --> C[Vista CONTROL]
+    B --> D[Vista MONITOREO]
+
+    C -->|Comandos WSS| E[Backend FastAPI]
+    D -->|Eventos WSS| E
+    D -->|Consultas REST| E
+
+    E --> F[Amazon RDS]
+    E -->|Comandos y eventos| G[ESP8266]
+    G -->|Respuesta y eventos| E
+    E -->|Actualización en vivo| D
 ```
 
-## Configuración
+## 🔄 Comunicación del sistema
 
-Editar `js/config/app-config.js`:
+El sistema utiliza dos mecanismos de comunicación que cumplen funciones diferentes.
 
-```js
-export const APP_CONFIG = Object.freeze({
-  API_BASE_URL: 'https://44.196.22.143:8000',
-  VEHICLE_ID: 1,
-  WS_URL: 'wss://44.196.22.143:8000/ws/vehiculos/1',
-  HEALTH_PATH: '/health',
-  // ...
-  WS_VEHICLES_URL: 'wss://44.196.22.143:8000/ws/vehiculos/',
-});
+### API REST
+
+Se utiliza para:
+
+- Obtener información inicial.
+- Consultar los movimientos almacenados.
+- Recuperar información después de una desconexión.
+- Solicitar nuevamente los registros disponibles en el servidor.
+
+### WebSocket seguro (WSS)
+
+Se utiliza para:
+
+- Enviar comandos desde la interfaz de control.
+- Recibir eventos en tiempo real.
+- Actualizar la vista de monitoreo sin recargar la página.
+- Sincronizar la información entre diferentes sesiones abiertas de la aplicación.
+
+La conexión WSS permite mantener una comunicación bidireccional entre los clientes y el servidor.
+
+### Recuperación de conexión
+
+Cuando ocurre una interrupción de red, la aplicación debe restablecer la conexión WebSocket y recuperar mediante REST la información necesaria para sincronizar nuevamente el estado del monitoreo.
+
+## 🗄️ Gestión de datos
+
+El backend administra la información y utiliza una base de datos relacional Amazon RDS.
+
+La información se organiza para relacionar los vehículos, los comandos y los registros de movimientos.
+
+El historial permite consultar los eventos que han sido registrados y almacenados por el backend.
+
+Es importante distinguir los siguientes conceptos:
+
+- **Último movimiento:** movimiento o evento más reciente que se presenta en la interfaz.
+- **Evento:** mensaje o acción de comunicación recibido por el sistema.
+- **Historial:** conjunto de registros almacenados en la base de datos.
+- **Ejecución física:** movimiento realizado efectivamente por los actuadores del vehículo.
+
+La recepción de un comando o evento no garantiza por sí misma que el vehículo haya ejecutado físicamente el movimiento.
+
+Los movimientos internos generados por el modo DEMO no aparecen automáticamente en el historial si no son enviados al backend y registrados en la base de datos.
+
+## 🛠️ Tecnologías utilizadas
+
+### Frontend
+- HTML5.
+- CSS3.
+- JavaScript.
+- Bootstrap 5.
+- WebSocket API.
+- GitHub Pages.
+
+### Backend e infraestructura
+- Python.
+- FastAPI.
+- REST API.
+- WebSocket seguro (WSS).
+- Amazon Web Services (AWS).
+- Amazon RDS.
+- HTTPS y certificados SSL/TLS.
+
+### Hardware
+- ESP8266.
+- Arduino IDE.
+- Módulos electrónicos de control del vehículo.
+
+## 📱 Diseño responsivo
+
+La aplicación utiliza un enfoque de diseño Mobile First para facilitar su utilización desde dispositivos móviles.
+
+Se consideran los siguientes aspectos:
+
+- Distribución adaptable de los componentes.
+- Controles accesibles desde pantallas pequeñas.
+- Tabla de monitoreo adaptable.
+- Navegación entre las vistas CONTROL y MONITOREO.
+- Organización de la información para evitar desbordamientos horizontales.
+
+## 🔐 Seguridad
+
+La comunicación entre el frontend y el backend utiliza protocolos seguros:
+
+- HTTPS para el acceso a los servicios REST.
+- WSS para la comunicación WebSocket.
+- Certificados SSL/TLS para proteger la transmisión de información.
+
+La versión actual del proyecto no requiere el envío de una API Key desde el frontend.
+
+La seguridad de la infraestructura también depende de la configuración del servidor, las reglas de acceso, los certificados y la protección de la base de datos.
+
+## ⚙️ Instalación y ejecución local
+
+### Requisitos
+
+- Navegador web actualizado.
+- Visual Studio Code (recomendado).
+- Conexión a Internet.
+- Backend disponible y configurado.
+- Servicio WebSocket activo.
+
+### Pasos de instalación
+
+1. Clonar el repositorio:
+
+```bash
+git clone https://github.com/YolotzinGranados/Control-IoT-frontend.git
 ```
 
-`API_BASE_URL` se configura como HTTPS en el mismo host/puerto del WSS. El backend debe estar sirviendo REST mediante TLS en `:8000`. Si REST utiliza otro host/puerto HTTPS, cambia `API_BASE_URL` sin modificar los contratos de rutas.
+2. Entrar al directorio:
 
-No hay secretos en la configuración. La clave `X-API-Key` se introduce manualmente en la interfaz, vive solo en memoria y se borra al recargar o cerrar la pestaña. Nunca la guardes en este archivo, en LocalStorage ni en GitHub.
-
-## Contratos utilizados
-
-Consulta `docs/API_CONTRACT.md`. Las rutas consumidas son:
-
-- `GET /health`
-- `GET /vehiculos/{id_vehiculo}`
-- `GET /vehiculos/{id_vehiculo}/comandos`
-- `GET /vehiculos/{id_vehiculo}/demos`
-- `POST /vehiculos/{id_vehiculo}/movimientos`
-- `POST /vehiculos/{id_vehiculo}/demos/{id_demo}/iniciar`
-- `POST /vehiculos/{id_vehiculo}/demos/cancelar`
-- WSS `/ws/vehiculos/{id_vehiculo}`
-
-El frontend no usa GET para operaciones de escritura y no reintenta automáticamente los POST.
-
-## Requisitos obligatorios antes de usarlo desde GitHub Pages
-
-1. **TLS OpenSSL:** la página GitHub Pages usa HTTPS; por eso REST también debe responder por HTTPS y el WebSocket por WSS. El certificado debe incluir `subjectAltName` para la IP `44.196.22.143` y estar firmado por una CA que cada dispositivo cliente haya instalado como confiable. Consulta `docs/OPENSSL_WINDOWS.md`.
-2. **CORS:** el backend revisado no configura CORS. Agrega el middleware descrito en `docs/BACKEND_PREREQUISITES.md`, usando el origen `https://<USUARIO_GITHUB>.github.io`.
-3. **WebSocket abierto:** el backend revisado no autentica la ruta WSS. La clave API protege POST REST, no la suscripción WebSocket. No confundas WSS con autorización.
-4. **RDS:** `/health` ejecuta `db.ping()`. No existe un endpoint independiente de RDS. El frontend muestra RDS Disponible solo cuando recibe `estado: "ok"` y `base_datos: "conectada"`.
-
-## Ejecución local en Windows
-
-Desde PowerShell, en la carpeta raíz del frontend:
-
-```powershell
-py -m http.server 5500
+```bash
+cd Control-IoT-frontend
 ```
 
-Abre `http://localhost:5500`. Los módulos ES se sirven correctamente por HTTP en localhost. La API remota sigue requiriendo certificado confiable y CORS para `http://localhost:5500` si el navegador hace solicitudes cross-origin. Para una prueba equivalente a producción, sirve también el frontend bajo HTTPS.
+3. Abrir el proyecto en Visual Studio Code.
 
-No abras `index.html` directamente con `file://` porque los módulos ES y las solicitudes fetch no funcionan de forma fiable desde ese esquema.
+4. Revisar el archivo de configuración del frontend y verificar las direcciones de conexión de la API REST y del WebSocket.
 
-## Publicar en GitHub Pages
+5. Ejecutar el proyecto mediante una extensión como Live Server o un servidor HTTP local.
 
-1. Crea un repositorio nuevo llamado `control-iot` en GitHub.
-2. Copia el contenido de esta carpeta a la raíz del repositorio.
-3. Inicializa Git y publica la rama `main`:
+6. Abrir la aplicación desde el navegador.
 
-```powershell
-git init
+**Nota:** El backend debe estar disponible y las direcciones de conexión deben corresponder a los servicios desplegados.
+
+## 🚀 Despliegue
+
+El frontend se publica mediante GitHub Pages.
+
+Repositorio:
+
+https://github.com/YolotzinGranados/Control-IoT-frontend
+
+Dirección de acceso:
+
+https://yolotzingranados.github.io/Control-IoT-frontend/
+
+Para actualizar la aplicación:
+
+1. Realizar los cambios en los archivos del proyecto.
+2. Verificar el funcionamiento local.
+3. Guardar los cambios.
+4. Enviar los cambios al repositorio:
+
+```bash
 git add .
-git commit -m "feat: crear frontend de control IoT"
-git branch -M main
-git remote add origin https://github.com/<USUARIO_GITHUB>/control-iot.git
-git push -u origin main
+git commit -m "Actualización del frontend IoT"
+git push origin main
 ```
 
-4. En GitHub abre **Settings → Pages**.
-5. En **Build and deployment**, elige **Deploy from a branch**.
-6. Selecciona `main` y carpeta `/ (root)`, guarda.
-7. La página se publicará en `https://<USUARIO_GITHUB>.github.io/control-iot/`.
-8. Añade `https://<USUARIO_GITHUB>.github.io` al CORS del backend existente.
-9. Instala la CA OpenSSL en cada dispositivo que vaya a utilizar el control.
+5. Esperar a que GitHub Pages publique la nueva versión.
 
-Los archivos usan rutas relativas (`./`) para funcionar en la subruta de GitHub Pages. `favicon.svg` está en la raíz y se vincula desde `index.html`.
+## 🧪 Pruebas y validaciones
 
-## Seguridad y operación
+Para verificar el funcionamiento del sistema se consideran las siguientes pruebas:
 
-- No se incluye API key, contraseña, llave privada, certificado privado ni dato de RDS.
-- `X-API-Key` se mantiene solo en memoria.
-- No se usa `innerHTML` para insertar datos remotos; se usa `textContent`/`createElement`.
-- Los errores de timeout de POST no se reintentan porque el backend podría haber confirmado el COMMIT.
-- La detención se prioriza en la cola del frontend después de resolver una solicitud en curso. Si la conexión cae o una solicitud se queda sin respuesta, el navegador no puede garantizar el orden de procesamiento remoto; no es una parada de seguridad certificada.
-- El joystick se habilita únicamente para direcciones encontradas activas en el catálogo real y requiere un comando DETENER activo. No se inventan IDs ni comandos.
-- El firmware ESP8266 compartido ejecuta movimientos individuales como pulsos temporizados (por ejemplo, `DURACION_NORMAL = 300 ms`); este frontend envía una orden por transición y no genera repetición automática. Por tanto, no debe interpretarse como movimiento continuo sostenido hasta soltar. Para movimiento continuo se necesitaría un contrato keepalive/start-stop acordado entre backend y firmware, fuera del alcance de este frontend.
-- Si el catálogo no incluye `DETENER`, el botón permanece deshabilitado.
-- La cancelación de DEMO usa el endpoint existente; la secuencia la ejecuta el backend. Como no existe una consulta de DEMO activa, la interfaz permite intentar cancelar una secuencia previa y muestra el 404 del backend si no existe.
-- La conexión WSS del navegador no significa que el ESP8266/ESP32 esté en línea.
-- El indicador API refleja que `/health` respondió, no que todas las rutas REST ni los 21 Stored Procedures hayan sido probados individualmente.
+| Prueba | Resultado esperado |
+|---|---|
+| Carga inicial | Recuperación de información mediante REST. |
+| Conexión WSS | Establecimiento de comunicación con el backend. |
+| Envío de comandos | Recepción del comando por el servidor. |
+| Monitoreo en vivo | Actualización de eventos sin recargar la página. |
+| Segunda pestaña | Visualización de eventos generados desde otra sesión. |
+| Reconexión | Recuperación de comunicación y sincronización. |
+| Historial | Consulta de registros almacenados en RDS. |
+| Modo DEMO | Prueba de controles sin asumir persistencia automática. |
+| Diseño responsivo | Funcionamiento en computadoras y dispositivos móviles. |
 
-## Pruebas y documentación
+## 🔮 Mejoras futuras
 
-- `docs/PRUEBAS.md`: joystick, botones, prioridad DETENER, DEMO, WSS independiente, conectividad y responsive.
-- `docs/API_CONTRACT.md`: contratos derivados del backend inspeccionado.
-- `docs/BACKEND_PREREQUISITES.md`: CORS y condiciones del backend existente.
-- `docs/OPENSSL_WINDOWS.md`: CA privada, SAN de IP, confianza de navegadores y Uvicorn TLS.
+- Incorporación de más vehículos.
+- Administración de vehículos desde una interfaz independiente.
+- Gestión de usuarios y permisos.
+- Ampliación del historial de movimientos.
+- Incorporación de indicadores del estado de conexión.
+- Registro de confirmaciones de ejecución física.
+- Mejoras en la supervisión y diagnóstico de dispositivos IoT.
 
-## Verificación realizada en este paquete
+## 👨‍💻 Autoría
 
-Se revisó estáticamente la estructura de módulos, rutas, contratos y sintaxis JavaScript. No se ejecutaron pruebas de red contra AWS, no se comprobó el certificado real de EC2, no se publicó en GitHub Pages y no se probó hardware físico.
-=======
-# Control-IoT-frontend
->>>>>>> 182719ec51cafb4158263358de307f1afeb83eba
+**Proyecto:** Sistema de Control y Monitoreo de Vehículos IoT.
+
+**Desarrollo:** Yolotzin Granados.
+
+**Repositorio:** Control-IoT-frontend.
+
+---
+
+*Proyecto de integración de tecnologías web, comunicación en tiempo real, servicios en la nube y sistemas embebidos para el control y monitoreo de vehículos mediante Internet de las Cosas (IoT).*
