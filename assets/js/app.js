@@ -1,3 +1,4 @@
+import { MonitorView } from './ui/monitor-view.js';
 import { APP_CONFIG } from './config/app-config.js';
 import { HttpClient } from './api/http-client.js';
 import { VehicleApi } from './api/vehicle-api.js';
@@ -51,6 +52,63 @@ const notifications = new NotificationsView();
 
 let vehicleId = APP_CONFIG.VEHICLE_ID;
 let switchingVehicle = false;
+
+const monitorView = new MonitorView({ http, vehicleId });
+
+function bindViews() {
+  const tabs = [$('#tab-control'), $('#tab-monitor')];
+
+  const select = (index) => {
+    if (index === 1) {
+      neutralizeBoth();
+    }
+
+    tabs.forEach((tab, i) => {
+      tab.setAttribute('aria-selected', String(i === index));
+      tab.tabIndex = i === index ? 0 : -1;
+
+      document.getElementById(
+        tab.getAttribute('aria-controls')
+      ).hidden = i !== index;
+    });
+
+    if (index === 1) {
+      monitorView.refresh();
+    }
+  };
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => select(index));
+
+    tab.addEventListener('keydown', (event) => {
+      if (![
+        'ArrowLeft',
+        'ArrowRight',
+        'Home',
+        'End',
+      ].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const next = event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? 1
+          : 1 - index;
+
+      select(next);
+      tabs[next].focus();
+    });
+  });
+
+  $('#monitor-refresh').addEventListener(
+    'click',
+    () => monitorView.refresh()
+  );
+}
+
 let demoRequests = 0;
 
 let apiReady = false;
@@ -94,8 +152,6 @@ function updateControlAvailability() {
   const movementEnabled = enabled
     && Object.values(directionCommands).some(Boolean);
 
-  // Neutraliza antes de deshabilitar para solicitar DETENER
-  // si había movimiento.
   if (!movementEnabled) {
     joystickView?.forceNeutral();
   }
@@ -128,6 +184,10 @@ function showError(title, error) {
 }
 
 function handleCommandState(payload) {
+  if (['accepted', 'stopped'].includes(payload.state)) {
+    monitorView.refresh();
+  }
+
   if (payload.isStop || payload.state === 'stopping') {
     controlsView?.setStopState(
       payload.state === 'error'
@@ -187,6 +247,10 @@ const websocketClient = new WebSocketClient(socketUrl(vehicleId), {
 
   onState: (state) => {
     connectivityController.setWebSocketState(state);
+
+    if (state === 'online') {
+      monitorView.refresh();
+    }
   },
 
   onError: () => {
@@ -208,8 +272,6 @@ const connectivityController = new ConnectivityController({
   onState: (state) => {
     connectivityView.render(state);
 
-    // Una comprobación periódica pendiente conserva
-    // el último resultado y no interrumpe el arrastre.
     if (state.api !== 'checking') {
       apiReady = state.api === 'online';
       rdsReady = state.rds === 'online';
@@ -439,6 +501,7 @@ function handleWebSocketMessage(message) {
     return;
   }
 
+  monitorView.handleEvent(message);
   demoController.handleEvent(message);
 
   if (message.tipo === 'estado_inicial') {
@@ -611,6 +674,7 @@ function bindVehicleSelection() {
     websocketClient.stop();
 
     vehicleId = id;
+    monitorView.setVehicle(id);
     vehicleApi.vehicleId = id;
     commandApi.vehicleId = id;
     demoApi.vehicleId = id;
@@ -646,6 +710,9 @@ function bindVehicleSelection() {
 }
 
 async function init() {
+  bindViews();
+  monitorView.refresh();
+
   window.addEventListener('pagehide', () => {
     neutralizeBoth();
   });
