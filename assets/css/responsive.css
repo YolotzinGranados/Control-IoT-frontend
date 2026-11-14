@@ -44,7 +44,7 @@
   .command-button { min-height: 58px; }
   .demo-actions { display: grid; grid-template-columns: 1fr 1fr; }
 }
-@media (orientation: landscape) and (max-height: 560px) and (max-width: 950px) {
+@media (orientation: landscape) and (max-height: 560px) and (min-width: 761px) and (max-width: 950px) {
   .app-header { padding-block: 10px; }
   .connectivity-panel { margin-top: 10px; }
   .connectivity-note { display: none; }
@@ -236,5 +236,26 @@ button[hidden] {
 
   .joystick {
     width: min(62vw, 235px);
+  }
+}
+@media (max-width: 480px) {
+  .header-main,
+  .connectivity-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .header-vehicle {
+    text-align: left;
+  }
+
+  .brand-lockup,
+  .connectivity-copy {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 360px) {
+  .vehicle-fields {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

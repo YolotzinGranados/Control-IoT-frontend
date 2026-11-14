@@ -6,26 +6,17 @@ import { CommandApi } from './api/command-api.js';
 import { DemoApi } from './api/demo-api.js';
 import { HealthApi } from './api/health-api.js';
 import { WebSocketClient } from './websocket/websocket-client.js';
-
 import { CommandDispatcher } from './domain/command-dispatcher.js';
 import { JoystickController } from './domain/joystick-controller.js';
 import { DemoController } from './domain/demo-controller.js';
 import { ConnectivityController } from './domain/connectivity-controller.js';
-
-import {
-  activeCommands,
-  findStopCommand,
-  getSecondaryCommands,
-  resolveDirections,
-} from './domain/command-catalog.js';
-
+import { activeCommands,findStopCommand,getSecondaryCommands, resolveDirections,} from './domain/command-catalog.js';
 import { DashboardView } from './ui/dashboard-view.js';
 import { ConnectivityView } from './ui/connectivity-view.js';
 import { JoystickView } from './ui/joystick-view.js';
 import { ControlsView } from './ui/controls-view.js';
 import { DemoView } from './ui/demo-view.js';
 import { NotificationsView } from './ui/notifications-view.js';
-
 import { $, setText } from './utils/dom.js';
 import { friendlyError } from './utils/errors.js';
 import { expectArray, validateCommand } from './utils/validation.js';
@@ -117,7 +108,7 @@ let vehicleActive = false;
 
 let directionCommands = {};
 let stopCommand = null;
-
+let manualControlEnabled = true;
 let demoController;
 let joystickController;
 let joystickView;
@@ -132,9 +123,8 @@ function hasApiControlAccess() {
 }
 
 function hasControlAccess() {
-  return hasApiControlAccess() && Boolean(stopCommand);
+  return manualControlEnabled && hasApiControlAccess() && Boolean(stopCommand);
 }
-
 function manualControlActive() {
   return joystickController.currentDirection !== 'neutral'
     || controlsView.palaJoystick.currentDirection !== 'neutral';
@@ -146,6 +136,8 @@ function neutralizeBoth(sendStop = true) {
 }
 
 function updateControlAvailability() {
+  controlsView?.setEnabled(enabled);
+ controlsView?.setControlPower(manualControlEnabled); 
   const demoActive = demoController?.isActive() || false;
   const enabled = hasControlAccess() && !demoActive;
 
@@ -161,8 +153,7 @@ function updateControlAvailability() {
   controlsView?.setEnabled(enabled);
 
   demoView?.setAvailability({
-    enabled: hasApiControlAccess(),
-    cancelEnabled: !switchingVehicle && vehicleActive,
+ enabled: manualControlEnabled && hasApiControlAccess(),    cancelEnabled: !switchingVehicle && vehicleActive,
     active: demoActive,
   });
 
@@ -341,7 +332,24 @@ joystickView = new JoystickView({
 
 controlsView = new ControlsView({
   dispatcher,
+  onToggleControl: () => {
+  manualControlEnabled = !manualControlEnabled;
 
+  if (!manualControlEnabled) {
+    neutralizeBoth(false);
+  }
+
+  updateControlAvailability();
+
+  if (
+    !manualControlEnabled
+    && vehicleActive
+    && !switchingVehicle
+    && (stopCommand || demoController?.isActive())
+  ) {
+    return controlsView.onStop();
+  }
+},
   onCommand: async (command, button) => {
     controlsView.setButtonState(button, 'sending');
 

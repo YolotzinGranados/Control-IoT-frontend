@@ -843,3 +843,29 @@
     transition: none;
   }
 }
+.remote-controller .remote-stop {
+  width: fit-content;
+  max-width: 100%;
+  margin: 14px auto 0;
+  padding: 0;
+  border: 0;
+}
+
+.remote-controller .remote-stop .stop-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-color: #fb7185;
+  border-radius: 999px;
+  background: #291919;
+  color: #ffe4e8;
+  box-shadow: none;
+}
+
+.remote-controller .remote-stop .stop-button:hover:not(:disabled),
+.remote-controller .remote-stop .stop-button[data-state="sending"] {
+  background: #831f32;
+}

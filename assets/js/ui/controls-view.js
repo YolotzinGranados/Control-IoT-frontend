@@ -67,7 +67,7 @@ function iconFor(name) {
 }
 
 export class ControlsView {
-  constructor({ dispatcher, onCommand, onStop }) {
+  constructor({ dispatcher, onCommand, onStop, onToggleControl}) {
     this.root = $('#command-buttons');
     this.stopButton = $('#stop-button');
     this.stopHelp = $('#stop-help');
@@ -77,6 +77,17 @@ export class ControlsView {
     this.buttons = new Map();
 
     this.buildRemoteLayout();
+    this.powerButton = createElement(
+  'button',
+  'command-button remote-function-button'
+);
+this.powerButton.type = 'button';
+this.powerButton.append(
+  createElement('i', 'bi bi-power'),
+  createElement('span', 'remote-button-label')
+);
+this.setControlPower(true);
+this.powerButton.addEventListener('click', onToggleControl);
 
     this.palaJoystick = new PalaJoystickView({
       root: this.palaRoot,
@@ -109,7 +120,7 @@ export class ControlsView {
     const body = createElement('div', 'remote-body');
 
     joystickCard.before(remote);
-    remote.append(heading, body);
+    operationsCard.append(stopZone);
 
     joystickCard.classList.add('remote-movement');
     $('#joystick-title').textContent = 'Movimiento';
@@ -244,17 +255,28 @@ export class ControlsView {
       return !assignedIds.has(Number(command.id_comando));
     });
 
-    if (!secondaryCommands.length) {
-      this.root.append(
-        createElement(
-          'p',
-          'remote-empty',
-          'Sin funciones adicionales disponibles.'
-        )
-      );
+   this.root.append(this.powerButton);
 
-      return;
-    }
+const hasSound = secondaryCommands.some((command) =>
+  ['MUTE', 'SONIDO', 'SILENCIO'].includes(
+    normalizeCommandName(command.nombre)
+  )
+);
+
+if (!hasSound) {
+  const sound = createElement(
+    'button',
+    'command-button remote-function-button'
+  );
+  sound.type = 'button';
+  sound.disabled = true;
+  sound.title = 'El catálogo del vehículo no incluye un comando de sonido.';
+  sound.append(
+    createElement('i', 'bi bi-volume-mute'),
+    createElement('span', 'remote-button-label', 'Sonido · No disponible')
+  );
+  this.root.append(sound);
+}
 
     for (const command of secondaryCommands) {
       this.root.append(this.createButton(command));
@@ -270,7 +292,12 @@ export class ControlsView {
     button.type = 'button';
     button.disabled = true;
     button.dataset.state = 'disabled';
-    button.title = displayCommandName(command);
+   const name = normalizeCommandName(command.nombre);
+   const caption = ['MUTE', 'SONIDO', 'SILENCIO'].includes(name)
+  ? 'Sonido'
+  : displayCommandName(command);
+
+button.title = caption;  
 
     const icon = createElement(
       'i',
@@ -279,12 +306,7 @@ export class ControlsView {
 
     icon.setAttribute('aria-hidden', 'true');
 
-    const label = createElement(
-      'span',
-      'remote-button-label',
-      displayCommandName(command)
-    );
-
+   const label = createElement('span', 'remote-button-label', caption);
     const stateIcon = createElement(
       'i',
       'bi bi-arrow-up-right command-state-icon'
@@ -302,6 +324,10 @@ export class ControlsView {
 
     return button;
   }
+  setControlPower(enabled) {
+  this.powerButton.querySelector('.remote-button-label').textContent =
+    enabled ? 'Apagar control' : 'Encender control';
+}
 
   setEnabled(enabled) {
     this.palaJoystick.setEnabled(enabled);
