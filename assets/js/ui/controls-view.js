@@ -1,17 +1,11 @@
-import {
-  $,
-  createElement,
-  setDisabled,
-} from '../utils/dom.js';
-
+import { $, createElement, setDisabled } from '../utils/dom.js';
 import {
   displayCommandName,
   normalizeCommandName,
 } from '../domain/command-catalog.js';
+import { PalaJoystickView } from './pala-joystick-view.js';
 
-import {
-  PalaJoystickView,
-} from './pala-joystick-view.js';
+const SOUND_COMMANDS = ['MUTE', 'SONIDO', 'SILENCIO'];
 
 const PALA_DIRECTIONS = [
   {
@@ -41,25 +35,23 @@ const PALA_DIRECTIONS = [
 ];
 
 function iconFor(name) {
-  const value = normalizeCommandName(name);
-
-  if (value.includes('LUZ') || value.includes('LUCES')) {
+  if (name.includes('LUZ') || name.includes('LUCES')) {
     return 'bi-lightbulb';
   }
 
-  if (value.includes('VELOC')) {
+  if (name.includes('VELOC')) {
     return 'bi-speedometer2';
   }
 
-  if (value.includes('MUTE') || value.includes('SONIDO')) {
+  if (SOUND_COMMANDS.includes(name) || name.includes('MUTE') || name.includes('SONIDO')) {
     return 'bi-volume-mute';
   }
 
-  if (value.includes('ALEATORIO')) {
+  if (name.includes('ALEATORIO')) {
     return 'bi-shuffle';
   }
 
-  if (value.includes('PALA') || value.includes('BRAZO')) {
+  if (name.includes('PALA') || name.includes('BRAZO')) {
     return 'bi-tools';
   }
 
@@ -67,27 +59,28 @@ function iconFor(name) {
 }
 
 export class ControlsView {
-  constructor({ dispatcher, onCommand, onStop, onToggleControl}) {
+  constructor({ dispatcher, onCommand, onStop, onToggleControl }) {
     this.root = $('#command-buttons');
     this.stopButton = $('#stop-button');
     this.stopHelp = $('#stop-help');
-
     this.onCommand = onCommand;
     this.onStop = onStop;
     this.buttons = new Map();
 
     this.buildRemoteLayout();
+
     this.powerButton = createElement(
-  'button',
-  'command-button remote-function-button'
-);
-this.powerButton.type = 'button';
-this.powerButton.append(
-  createElement('i', 'bi bi-power'),
-  createElement('span', 'remote-button-label')
-);
-this.setControlPower(true);
-this.powerButton.addEventListener('click', onToggleControl);
+      'button',
+      'command-button remote-function-button'
+    );
+    this.powerButton.type = 'button';
+
+    const powerIcon = createElement('i', 'bi bi-power');
+    powerIcon.setAttribute('aria-hidden', 'true');
+    this.powerLabel = createElement('span', 'remote-button-label');
+    this.powerButton.append(powerIcon, this.powerLabel);
+    this.setControlPower(true);
+    this.powerButton.addEventListener('click', onToggleControl);
 
     this.palaJoystick = new PalaJoystickView({
       root: this.palaRoot,
@@ -111,16 +104,14 @@ this.powerButton.addEventListener('click', onToggleControl);
     remote.setAttribute('aria-label', 'Control remoto del carrito');
 
     const heading = createElement('div', 'remote-heading');
-
     heading.append(
       createElement('i', 'bi bi-controller'),
       createElement('h3', '', 'Control remoto')
     );
 
     const body = createElement('div', 'remote-body');
-
     joystickCard.before(remote);
-    
+    remote.append(heading, body);
 
     joystickCard.classList.add('remote-movement');
     $('#joystick-title').textContent = 'Movimiento';
@@ -128,10 +119,7 @@ this.powerButton.addEventListener('click', onToggleControl);
     operationsCard.classList.add('remote-functions');
     $('#operations-title').textContent = 'Funciones';
 
-    const description = operationsCard.querySelector(
-      '.panel-description'
-    );
-
+    const description = operationsCard.querySelector('.panel-description');
     if (description) {
       description.textContent = 'Acciones del carrito seleccionado.';
     }
@@ -147,20 +135,14 @@ this.powerButton.addEventListener('click', onToggleControl);
     const title = createElement('h3', '', 'Pala');
     title.id = 'pala-title';
 
-    // Base de la palanca. Las direcciones son etiquetas,
-    // no botones.
     this.palaRoot = createElement('div', 'pala-pad pala-stick');
-
     this.palaCenter = createElement('div', 'pala-center');
     this.palaCenter.title =
       'Arrastra para controlar la pala. Suelta para detener.';
 
     const knobRing = createElement('span', 'pala-knob-ring');
     knobRing.setAttribute('aria-hidden', 'true');
-
-    knobRing.append(
-      createElement('i', 'bi bi-arrows-move')
-    );
+    knobRing.append(createElement('i', 'bi bi-arrows-move'));
 
     this.palaCenter.append(knobRing);
     this.palaRoot.append(this.palaCenter);
@@ -173,12 +155,8 @@ this.powerButton.addEventListener('click', onToggleControl);
       'pala-stick-help',
       'Arrastra la palanca amarilla. Suelta para detener.'
     );
-
     instructions.id = 'pala-stick-help';
-    this.palaCenter.setAttribute(
-      'aria-describedby',
-      'pala-stick-help'
-    );
+    this.palaCenter.setAttribute('aria-describedby', instructions.id);
 
     palaSection.append(
       title,
@@ -187,25 +165,18 @@ this.powerButton.addEventListener('click', onToggleControl);
       instructions
     );
 
-    body.append(
-      joystickCard,
-      operationsCard,
-      palaSection
-    );
+    body.append(joystickCard, operationsCard, palaSection);
 
     stopZone.classList.add('remote-stop');
     operationsCard.append(stopZone);
   }
 
   render(commands) {
-    // Conserva el elemento de la palanca y sus eventos.
     this.palaJoystick.forceNeutral();
     this.root.replaceChildren();
     this.buttons.clear();
 
-    for (const label of this.palaRoot.querySelectorAll(
-      '.pala-direction-label'
-    )) {
+    for (const label of this.palaRoot.querySelectorAll('.pala-direction-label')) {
       label.remove();
     }
 
@@ -213,11 +184,10 @@ this.powerButton.addEventListener('click', onToggleControl);
     const directions = {};
 
     for (const definition of PALA_DIRECTIONS) {
-      const command = commands.find((item) => {
-        return definition.names.includes(
-          normalizeCommandName(item.nombre)
-        ) && !assignedIds.has(Number(item.id_comando));
-      });
+      const command = commands.find((item) =>
+        definition.names.includes(normalizeCommandName(item.nombre))
+        && !assignedIds.has(Number(item.id_comando))
+      );
 
       if (command) {
         directions[definition.direction] = command;
@@ -228,55 +198,49 @@ this.powerButton.addEventListener('click', onToggleControl);
         'div',
         `pala-direction-label pala-label-${definition.direction}`
       );
-
       label.dataset.available = String(Boolean(command));
-
-      const icon = createElement('i', `bi ${definition.icon}`);
-      icon.setAttribute('aria-hidden', 'true');
-
-      label.append(
-        icon,
-        createElement('span', '', definition.label)
-      );
-
       label.title = command
         ? `${definition.label}: disponible`
         : `${definition.label}: no está en el catálogo`;
 
+      const icon = createElement('i', `bi ${definition.icon}`);
+      icon.setAttribute('aria-hidden', 'true');
+      label.append(icon, createElement('span', '', definition.label));
       this.palaRoot.append(label);
     }
 
     this.palaJoystick.setCatalog(directions);
-
     this.palaFeedback.textContent =
       `${Object.keys(directions).length}/4 movimientos de pala disponibles`;
 
-    const secondaryCommands = commands.filter((command) => {
-      return !assignedIds.has(Number(command.id_comando));
-    });
+    const secondaryCommands = commands.filter(
+      (command) => !assignedIds.has(Number(command.id_comando))
+    );
 
-   this.root.append(this.powerButton);
+    this.root.append(this.powerButton);
 
-const hasSound = secondaryCommands.some((command) =>
-  ['MUTE', 'SONIDO', 'SILENCIO'].includes(
-    normalizeCommandName(command.nombre)
-  )
-);
+    const hasSound = secondaryCommands.some((command) =>
+      SOUND_COMMANDS.includes(normalizeCommandName(command.nombre))
+    );
 
-if (!hasSound) {
-  const sound = createElement(
-    'button',
-    'command-button remote-function-button'
-  );
-  sound.type = 'button';
-  sound.disabled = true;
-  sound.title = 'El catálogo del vehículo no incluye un comando de sonido.';
-  sound.append(
-    createElement('i', 'bi bi-volume-mute'),
-    createElement('span', 'remote-button-label', 'Sonido · No disponible')
-  );
-  this.root.append(sound);
-}
+    if (!hasSound) {
+      const sound = createElement(
+        'button',
+        'command-button remote-function-button'
+      );
+      sound.type = 'button';
+      sound.disabled = true;
+      sound.dataset.state = 'disabled';
+      sound.title = 'El catálogo del vehículo no incluye un comando de sonido.';
+
+      const icon = createElement('i', 'bi bi-volume-mute');
+      icon.setAttribute('aria-hidden', 'true');
+      sound.append(
+        icon,
+        createElement('span', 'remote-button-label', 'Sonido · No disponible')
+      );
+      this.root.append(sound);
+    }
 
     for (const command of secondaryCommands) {
       this.root.append(this.createButton(command));
@@ -288,42 +252,39 @@ if (!hasSound) {
       'button',
       'command-button remote-function-button'
     );
-
     button.type = 'button';
     button.disabled = true;
     button.dataset.state = 'disabled';
-   const name = normalizeCommandName(command.nombre);
-   const caption = ['MUTE', 'SONIDO', 'SILENCIO'].includes(name)
-  ? 'Sonido'
-  : displayCommandName(command);
 
-button.title = caption;  
+    const name = normalizeCommandName(command.nombre);
+    const caption = SOUND_COMMANDS.includes(name)
+      ? 'Sonido'
+      : displayCommandName(command);
+    button.title = caption;
 
-    const icon = createElement(
-      'i',
-      `bi ${iconFor(command.nombre)}`
-    );
-
+    const icon = createElement('i', `bi ${iconFor(name)}`);
     icon.setAttribute('aria-hidden', 'true');
 
-   const label = createElement('span', 'remote-button-label', caption);
-
+    const label = createElement('span', 'remote-button-label', caption);
     const stateIcon = createElement(
       'i',
       'bi bi-arrow-up-right command-state-icon'
     );
-
     stateIcon.setAttribute('aria-hidden', 'true');
 
     button.append(icon, label, stateIcon);
-
     button.addEventListener('click', () => {
       this.onCommand(command, button);
     });
 
     this.buttons.set(Number(command.id_comando), button);
-
     return button;
+  }
+
+  setControlPower(enabled) {
+    this.powerLabel.textContent = enabled
+      ? 'Apagar control'
+      : 'Encender control';
   }
 
   setEnabled(enabled) {
@@ -344,7 +305,6 @@ button.title = caption;
     if (!button) return;
 
     button.dataset.state = state;
-
     const icon = button.querySelector('.command-state-icon');
     if (!icon) return;
 
