@@ -135,8 +135,19 @@
 }
 
 .action-card {
-  grid-column: 1 / -1;
+  grid-column: auto;
   min-height: 0;
+}
+
+.demo-card,
+.action-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.action-card .action-message {
+  flex: 1;
 }
 
 .action-message {
@@ -198,6 +209,11 @@ button[hidden] {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .demo-card,
+  .action-card {
+    height: auto;
+  }
+
   .joystick-card {
     grid-row: auto;
   }
@@ -208,6 +224,28 @@ button[hidden] {
 
   .connectivity-icon {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-main,
+  .connectivity-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .header-vehicle {
+    text-align: left;
+  }
+
+  .brand-lockup,
+  .connectivity-copy {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 360px) {
+  .vehicle-fields {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -236,26 +274,5 @@ button[hidden] {
 
   .joystick {
     width: min(62vw, 235px);
-  }
-}
-@media (max-width: 480px) {
-  .header-main,
-  .connectivity-panel {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .header-vehicle {
-    text-align: left;
-  }
-
-  .brand-lockup,
-  .connectivity-copy {
-    overflow-wrap: anywhere;
-  }
-}
-
-@media (max-width: 360px) {
-  .vehicle-fields {
-    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -6,22 +6,26 @@ import { CommandApi } from './api/command-api.js';
 import { DemoApi } from './api/demo-api.js';
 import { HealthApi } from './api/health-api.js';
 import { WebSocketClient } from './websocket/websocket-client.js';
+
 import { CommandDispatcher } from './domain/command-dispatcher.js';
 import { JoystickController } from './domain/joystick-controller.js';
 import { DemoController } from './domain/demo-controller.js';
 import { ConnectivityController } from './domain/connectivity-controller.js';
+
 import {
   activeCommands,
   findStopCommand,
   getSecondaryCommands,
   resolveDirections,
 } from './domain/command-catalog.js';
+
 import { DashboardView } from './ui/dashboard-view.js';
 import { ConnectivityView } from './ui/connectivity-view.js';
 import { JoystickView } from './ui/joystick-view.js';
 import { ControlsView } from './ui/controls-view.js';
 import { DemoView } from './ui/demo-view.js';
 import { NotificationsView } from './ui/notifications-view.js';
+
 import { $, setText } from './utils/dom.js';
 import { friendlyError } from './utils/errors.js';
 import { expectArray, validateCommand } from './utils/validation.js';
@@ -129,9 +133,7 @@ function hasApiControlAccess() {
 }
 
 function hasControlAccess() {
-  return manualControlEnabled
-    && hasApiControlAccess()
-    && Boolean(stopCommand);
+  return manualControlEnabled && hasApiControlAccess() && Boolean(stopCommand);
 }
 
 function manualControlActive() {
@@ -147,6 +149,7 @@ function neutralizeBoth(sendStop = true) {
 function updateControlAvailability() {
   const demoActive = demoController?.isActive() || false;
   const enabled = hasControlAccess() && !demoActive;
+
   const movementEnabled = enabled
     && Object.values(directionCommands).some(Boolean);
 
@@ -246,6 +249,7 @@ const websocketClient = new WebSocketClient(socketUrl(vehicleId), {
 
   onState: (state) => {
     connectivityController.setWebSocketState(state);
+    monitorView.setConnection(state);
 
     if (state === 'online') {
       monitorView.refresh();
@@ -343,19 +347,10 @@ controlsView = new ControlsView({
 
   onToggleControl: () => {
     manualControlEnabled = !manualControlEnabled;
-
-    if (!manualControlEnabled) {
-      neutralizeBoth(false);
-    }
-
+    if (!manualControlEnabled) neutralizeBoth(false);
     updateControlAvailability();
-
-    if (
-      !manualControlEnabled
-      && vehicleActive
-      && !switchingVehicle
-      && (stopCommand || demoController?.isActive())
-    ) {
+    if (!manualControlEnabled && vehicleActive && !switchingVehicle
+        && (stopCommand || demoController?.isActive())) {
       return controlsView.onStop();
     }
   },
@@ -401,15 +396,67 @@ function createDemoController() {
       return !switchingVehicle && vehicleActive;
     },
 
-   onState: (state) => {
-  connectivityController.setWebSocketState(state);
-  monitorView.setConnection(state);
+    onState: (payload) => {
+      demoView?.renderState(payload);
 
-  if (state === 'online') {
-    monitorView.refresh();
-  }
-},
-    
+      if (payload.state === 'error') {
+        controlsView?.setStopState('error');
+      }
+
+      if (payload.state === 'cancelled') {
+        controlsView?.setStopState('accepted');
+      }
+
+      updateControlAvailability();
+
+      const messages = {
+        starting: [
+          'Iniciando DEMO',
+          'Solicitud enviada al servidor.',
+          'warning',
+        ],
+        accepted: [
+          'DEMO aceptada',
+          'Esperando eventos de avance por WSS.',
+          'success',
+        ],
+        uncertain: [
+          'Resultado incierto',
+          'No repitas el inicio. Puedes intentar cancelar la DEMO.',
+          'warning',
+        ],
+        finished: [
+          'DEMO finalizada',
+          'El servidor notificó demo_fin.',
+          'success',
+        ],
+        cancelled: [
+          'DEMO cancelada',
+          'El servidor confirmó la cancelación.',
+          'warning',
+        ],
+      };
+
+      if (messages[payload.state]) {
+        notifications.show(...messages[payload.state]);
+      }
+
+      if (payload.state === 'step') {
+        notifications.show(
+          'Movimiento de DEMO',
+          `${payload.message.comando} · paso ${payload.currentOrder} de ${payload.total || '?'}.`,
+          'neutral'
+        );
+      }
+
+      if (payload.state === 'error') {
+        notifications.show(
+          'Error en DEMO',
+          payload.message?.mensaje || friendlyError(payload.error),
+          'error'
+        );
+      }
+    },
   });
 }
 

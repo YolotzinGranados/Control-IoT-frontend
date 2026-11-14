@@ -312,6 +312,68 @@
   font-size: 1.35rem;
 }
 
+.remote-controller .remote-function-button {
+  position: relative;
+  aspect-ratio: 1;
+  min-height: 64px;
+  padding: 10px;
+  font-size: 1.4rem;
+}
+
+.remote-controller .remote-function-button[title]:hover::after,
+.remote-controller .remote-function-button[title]:focus-visible::after {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  width: max-content;
+  max-width: min(220px, 75vw);
+  padding: 5px 8px;
+  border: 1px solid #d48f3e;
+  border-radius: 7px;
+  background: #090f18;
+  color: #fff;
+  content: attr(title);
+  font-size: .68rem;
+  line-height: 1.25;
+  transform: translateX(-50%);
+}
+
+.remote-controller .remote-function-button.stop-button {
+  display: grid;
+  width: auto;
+  min-height: 64px;
+  border-color: #d48f3e;
+  border-radius: 13px;
+  background: #000;
+  color: #fec70a;
+  box-shadow: 0 4px 0 #44270c;
+}
+
+.remote-controller .remote-function-button.stop-button i {
+  grid-row: auto;
+  font-size: 1.4rem;
+}
+
+.remote-controller .remote-function-button.stop-button:hover:not(:disabled) {
+  border-color: #fec70a;
+  background: #89511e;
+}
+
+.remote-controller .remote-function-button.stop-button[data-state="accepted"] {
+  border-color: #4ade80;
+  background: #14532d;
+}
+
+.remote-controller .remote-function-button.stop-button[data-state="error"] {
+  border-color: var(--danger);
+  background: #7f1d1d;
+}
+
+.remote-controller .remote-function-button.stop-button:disabled {
+  opacity: .42;
+}
+
 .remote-controller .remote-empty {
   grid-column: 1 / -1;
   margin: 0;
@@ -842,30 +904,4 @@
   .remote-controller .pala-stick .pala-center {
     transition: none;
   }
-}
-.remote-controller .remote-stop {
-  width: fit-content;
-  max-width: 100%;
-  margin: 14px auto 0;
-  padding: 0;
-  border: 0;
-}
-
-.remote-controller .remote-stop .stop-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: auto;
-  min-height: 44px;
-  padding: 8px 14px;
-  border-color: #fb7185;
-  border-radius: 999px;
-  background: #291919;
-  color: #ffe4e8;
-  box-shadow: none;
-}
-
-.remote-controller .remote-stop .stop-button:hover:not(:disabled),
-.remote-controller .remote-stop .stop-button[data-state="sending"] {
-  background: #831f32;
 }
