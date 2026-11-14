@@ -401,67 +401,15 @@ function createDemoController() {
       return !switchingVehicle && vehicleActive;
     },
 
-    onState: (payload) => {
-      demoView?.renderState(payload);
+   onState: (state) => {
+  connectivityController.setWebSocketState(state);
+  monitorView.setConnection(state);
 
-      if (payload.state === 'error') {
-        controlsView?.setStopState('error');
-      }
-
-      if (payload.state === 'cancelled') {
-        controlsView?.setStopState('accepted');
-      }
-
-      updateControlAvailability();
-
-      const messages = {
-        starting: [
-          'Iniciando DEMO',
-          'Solicitud enviada al servidor.',
-          'warning',
-        ],
-        accepted: [
-          'DEMO aceptada',
-          'Esperando eventos de avance por WSS.',
-          'success',
-        ],
-        uncertain: [
-          'Resultado incierto',
-          'No repitas el inicio. Puedes intentar cancelar la DEMO.',
-          'warning',
-        ],
-        finished: [
-          'DEMO finalizada',
-          'El servidor notificó demo_fin.',
-          'success',
-        ],
-        cancelled: [
-          'DEMO cancelada',
-          'El servidor confirmó la cancelación.',
-          'warning',
-        ],
-      };
-
-      if (messages[payload.state]) {
-        notifications.show(...messages[payload.state]);
-      }
-
-      if (payload.state === 'step') {
-        notifications.show(
-          'Movimiento de DEMO',
-          `${payload.message.comando} · paso ${payload.currentOrder} de ${payload.total || '?'}.`,
-          'neutral'
-        );
-      }
-
-      if (payload.state === 'error') {
-        notifications.show(
-          'Error en DEMO',
-          payload.message?.mensaje || friendlyError(payload.error),
-          'error'
-        );
-      }
-    },
+  if (state === 'online') {
+    monitorView.refresh();
+  }
+},
+    
   });
 }
 
