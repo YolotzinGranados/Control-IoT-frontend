@@ -136,11 +136,8 @@ function neutralizeBoth(sendStop = true) {
 }
 
 function updateControlAvailability() {
-  controlsView?.setEnabled(enabled);
- controlsView?.setControlPower(manualControlEnabled); 
   const demoActive = demoController?.isActive() || false;
   const enabled = hasControlAccess() && !demoActive;
-
   const movementEnabled = enabled
     && Object.values(directionCommands).some(Boolean);
 
@@ -151,10 +148,12 @@ function updateControlAvailability() {
   joystickController?.setEnabled(movementEnabled);
   joystickView?.setEnabled(movementEnabled);
   controlsView?.setEnabled(enabled);
+controlsView?.setControlPower(manualControlEnabled);
 
   demoView?.setAvailability({
  enabled: manualControlEnabled && hasApiControlAccess(),    cancelEnabled: !switchingVehicle && vehicleActive,
     active: demoActive,
+    
   });
 
   const canStop = !switchingVehicle

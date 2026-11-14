@@ -120,7 +120,7 @@ this.powerButton.addEventListener('click', onToggleControl);
     const body = createElement('div', 'remote-body');
 
     joystickCard.before(remote);
-    operationsCard.append(stopZone);
+    
 
     joystickCard.classList.add('remote-movement');
     $('#joystick-title').textContent = 'Movimiento';
@@ -194,7 +194,7 @@ this.powerButton.addEventListener('click', onToggleControl);
     );
 
     stopZone.classList.add('remote-stop');
-    remote.append(stopZone);
+    operationsCard.append(stopZone);
   }
 
   render(commands) {
@@ -307,6 +307,7 @@ button.title = caption;
     icon.setAttribute('aria-hidden', 'true');
 
    const label = createElement('span', 'remote-button-label', caption);
+
     const stateIcon = createElement(
       'i',
       'bi bi-arrow-up-right command-state-icon'
@@ -324,10 +325,6 @@ button.title = caption;
 
     return button;
   }
-  setControlPower(enabled) {
-  this.powerButton.querySelector('.remote-button-label').textContent =
-    enabled ? 'Apagar control' : 'Encender control';
-}
 
   setEnabled(enabled) {
     this.palaJoystick.setEnabled(enabled);
