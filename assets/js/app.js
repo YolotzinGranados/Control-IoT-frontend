@@ -10,7 +10,12 @@ import { CommandDispatcher } from './domain/command-dispatcher.js';
 import { JoystickController } from './domain/joystick-controller.js';
 import { DemoController } from './domain/demo-controller.js';
 import { ConnectivityController } from './domain/connectivity-controller.js';
-import { activeCommands,findStopCommand,getSecondaryCommands, resolveDirections,} from './domain/command-catalog.js';
+import {
+  activeCommands,
+  findStopCommand,
+  getSecondaryCommands,
+  resolveDirections,
+} from './domain/command-catalog.js';
 import { DashboardView } from './ui/dashboard-view.js';
 import { ConnectivityView } from './ui/connectivity-view.js';
 import { JoystickView } from './ui/joystick-view.js';
@@ -109,6 +114,7 @@ let vehicleActive = false;
 let directionCommands = {};
 let stopCommand = null;
 let manualControlEnabled = true;
+
 let demoController;
 let joystickController;
 let joystickView;
@@ -123,8 +129,11 @@ function hasApiControlAccess() {
 }
 
 function hasControlAccess() {
-  return manualControlEnabled && hasApiControlAccess() && Boolean(stopCommand);
+  return manualControlEnabled
+    && hasApiControlAccess()
+    && Boolean(stopCommand);
 }
+
 function manualControlActive() {
   return joystickController.currentDirection !== 'neutral'
     || controlsView.palaJoystick.currentDirection !== 'neutral';
@@ -148,12 +157,12 @@ function updateControlAvailability() {
   joystickController?.setEnabled(movementEnabled);
   joystickView?.setEnabled(movementEnabled);
   controlsView?.setEnabled(enabled);
-controlsView?.setControlPower(manualControlEnabled);
+  controlsView?.setControlPower(manualControlEnabled);
 
   demoView?.setAvailability({
- enabled: manualControlEnabled && hasApiControlAccess(),    cancelEnabled: !switchingVehicle && vehicleActive,
+    enabled: manualControlEnabled && hasApiControlAccess(),
+    cancelEnabled: !switchingVehicle && vehicleActive,
     active: demoActive,
-    
   });
 
   const canStop = !switchingVehicle
@@ -331,24 +340,26 @@ joystickView = new JoystickView({
 
 controlsView = new ControlsView({
   dispatcher,
+
   onToggleControl: () => {
-  manualControlEnabled = !manualControlEnabled;
+    manualControlEnabled = !manualControlEnabled;
 
-  if (!manualControlEnabled) {
-    neutralizeBoth(false);
-  }
+    if (!manualControlEnabled) {
+      neutralizeBoth(false);
+    }
 
-  updateControlAvailability();
+    updateControlAvailability();
 
-  if (
-    !manualControlEnabled
-    && vehicleActive
-    && !switchingVehicle
-    && (stopCommand || demoController?.isActive())
-  ) {
-    return controlsView.onStop();
-  }
-},
+    if (
+      !manualControlEnabled
+      && vehicleActive
+      && !switchingVehicle
+      && (stopCommand || demoController?.isActive())
+    ) {
+      return controlsView.onStop();
+    }
+  },
+
   onCommand: async (command, button) => {
     controlsView.setButtonState(button, 'sending');
 
