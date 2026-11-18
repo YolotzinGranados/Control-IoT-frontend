@@ -345,15 +345,48 @@ joystickView = new JoystickView({
 controlsView = new ControlsView({
   dispatcher,
 
-  onToggleControl: () => {
-    manualControlEnabled = !manualControlEnabled;
-    if (!manualControlEnabled) neutralizeBoth(false);
+onToggleControl: async () => {
+  const powerCommand = controlsView.powerCommand;
+  const enabling = !manualControlEnabled;
+
+  if (enabling) {
+    manualControlEnabled = true;
     updateControlAvailability();
-    if (!manualControlEnabled && vehicleActive && !switchingVehicle
-        && (stopCommand || demoController?.isActive())) {
-      return controlsView.onStop();
+  }
+
+  if (powerCommand) {
+    controlsView.setButtonState(controlsView.powerButton, 'sending');
+
+    try {
+      await dispatcher.send(powerCommand, { source: 'button' });
+      controlsView.setButtonState(controlsView.powerButton, 'accepted');
+    } catch (error) {
+      controlsView.setButtonState(controlsView.powerButton, 'error');
+
+      if (enabling) {
+        manualControlEnabled = false;
+        updateControlAvailability();
+      }
+
+      showError('No se pudo cambiar el encendido del control', error);
+      return;
     }
-  },
+  }
+
+  if (!enabling) {
+    manualControlEnabled = false;
+    neutralizeBoth(false);
+  }
+
+  updateControlAvailability();
+
+  if (!manualControlEnabled
+      && vehicleActive
+      && !switchingVehicle
+      && (stopCommand || demoController?.isActive())) {
+    return controlsView.onStop();
+  }
+},
 
   onCommand: async (command, button) => {
     controlsView.setButtonState(button, 'sending');

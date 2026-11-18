@@ -40,6 +40,24 @@ const PALA_DIRECTIONS = [
   },
 ];
 
+function isSoundCommand(name) {
+  const value = normalizeCommandName(name);
+  return value.includes('MUTE')
+    || value.includes('SONIDO')
+    || value.includes('SILENCIO');
+}
+
+function isPowerCommand(name) {
+  return [
+    'ENCENDIDO',
+    'ENCENDER_CONTROL',
+    'APAGAR_CONTROL',
+    'ENCENDER',
+    'APAGAR',
+    'POWER',
+  ].includes(normalizeCommandName(name));
+}
+
 function iconFor(name) {
   const value = normalizeCommandName(name);
 
@@ -75,6 +93,9 @@ export class ControlsView {
     this.onCommand = onCommand;
     this.onStop = onStop;
     this.buttons = new Map();
+    this.powerCommand = null;
+    this.soundButton = null;
+    this.soundMuted = false;
 
     this.buildRemoteLayout();
 
@@ -85,9 +106,11 @@ export class ControlsView {
     this.powerButton.type = 'button';
     this.powerButton.setAttribute('aria-label', 'Apagar control');
     this.powerButton.title = 'Apagar control';
+
     const powerIcon = createElement('i', 'bi bi-power');
     powerIcon.setAttribute('aria-hidden', 'true');
     this.powerButton.append(powerIcon);
+
     this.setControlPower(true);
     this.powerButton.addEventListener('click', onToggleControl);
 
@@ -155,8 +178,6 @@ export class ControlsView {
     const title = createElement('h3', '', 'Pala');
     title.id = 'pala-title';
 
-    // Base de la palanca. Las direcciones son etiquetas,
-    // no botones.
     this.palaRoot = createElement('div', 'pala-pad pala-stick');
 
     this.palaCenter = createElement('div', 'pala-center');
@@ -205,10 +226,11 @@ export class ControlsView {
   }
 
   render(commands) {
-    // Conserva el elemento de la palanca y sus eventos.
     this.palaJoystick.forceNeutral();
     this.root.replaceChildren();
     this.buttons.clear();
+    this.powerCommand = null;
+    this.soundButton = null;
 
     for (const label of this.palaRoot.querySelectorAll(
       '.pala-direction-label'
@@ -262,27 +284,65 @@ export class ControlsView {
       return !assignedIds.has(Number(command.id_comando));
     });
 
+    this.powerCommand = secondaryCommands.find((command) =>
+      isPowerCommand(command.nombre)
+    ) || null;
+
+    const visibleCommands = secondaryCommands.filter((command) =>
+      !isPowerCommand(command.nombre)
+    );
+
+    const functionOrder = ['SONIDO', 'LUCES', 'VELOCIDAD'];
+
+    visibleCommands.sort((left, right) => {
+      const leftName = normalizeCommandName(left.nombre);
+      const rightName = normalizeCommandName(right.nombre);
+
+      const leftIndex = isSoundCommand(leftName)
+        ? 0
+        : functionOrder.indexOf(leftName);
+
+      const rightIndex = isSoundCommand(rightName)
+        ? 0
+        : functionOrder.indexOf(rightName);
+
+      return (leftIndex < 0 ? functionOrder.length : leftIndex)
+        - (rightIndex < 0 ? functionOrder.length : rightIndex);
+    });
+
     this.root.append(this.powerButton);
 
-    if (!secondaryCommands.some((command) =>
-      ['MUTE', 'SONIDO', 'SILENCIO'].includes(normalizeCommandName(command.nombre))
+    if (!visibleCommands.some((command) =>
+      isSoundCommand(command.nombre)
     )) {
       const sound = createElement(
         'button',
         'command-button remote-function-button'
       );
+
       sound.type = 'button';
       sound.disabled = true;
       sound.setAttribute('aria-label', 'Sonido no disponible');
-      sound.title = 'El catálogo del vehículo no incluye un comando de sonido.';
+      sound.title =
+        'El catálogo del vehículo no incluye un comando de sonido.';
+
       const soundIcon = createElement('i', 'bi bi-volume-mute');
       soundIcon.setAttribute('aria-hidden', 'true');
       sound.append(soundIcon);
+
+      this.soundButton = sound;
       this.root.append(sound);
     }
 
-    for (const command of secondaryCommands) {
-      this.root.append(this.createButton(command));
+    for (const command of visibleCommands) {
+      const button = this.createButton(command);
+
+      if (isSoundCommand(command.nombre)) {
+        this.soundButton = button;
+        this.updateSoundButton();
+      }
+
+      this.root.append(button);
     }
 
     this.root.append(this.stopButton);
@@ -298,10 +358,12 @@ export class ControlsView {
     button.type = 'button';
     button.disabled = true;
     button.dataset.state = 'disabled';
+
     const name = normalizeCommandName(command.nombre);
-    const caption = ['MUTE', 'SONIDO', 'SILENCIO'].includes(name)
+    const caption = isSoundCommand(name)
       ? 'Sonido'
       : displayCommandName(command);
+
     button.title = caption;
     button.setAttribute('aria-label', caption);
 
@@ -309,14 +371,12 @@ export class ControlsView {
       'i',
       `bi ${iconFor(command.nombre)}`
     );
-
     icon.setAttribute('aria-hidden', 'true');
 
     const stateIcon = createElement(
       'i',
       'bi bi-arrow-up-right command-state-icon'
     );
-
     stateIcon.setAttribute('aria-hidden', 'true');
 
     button.append(icon, stateIcon);
@@ -324,6 +384,10 @@ export class ControlsView {
     button.addEventListener('click', () => {
       this.onCommand(command, button);
     });
+
+    if (isSoundCommand(name)) {
+      button.dataset.function = 'sound';
+    }
 
     this.buttons.set(Number(command.id_comando), button);
 
@@ -355,6 +419,11 @@ export class ControlsView {
 
     button.dataset.state = state;
 
+    if (button === this.soundButton && state === 'accepted') {
+      this.soundMuted = !this.soundMuted;
+      this.updateSoundButton();
+    }
+
     const icon = button.querySelector('.command-state-icon');
     if (!icon) return;
 
@@ -366,6 +435,25 @@ export class ControlsView {
 
     icon.className =
       `bi ${icons[state] || 'bi-arrow-up-right'} command-state-icon`;
+  }
+
+  updateSoundButton() {
+    if (!this.soundButton) return;
+
+    const label = this.soundMuted
+      ? 'Activar sonido'
+      : 'Silenciar sonido';
+
+    this.soundButton.title = label;
+    this.soundButton.setAttribute('aria-label', label);
+
+    const icon = this.soundButton.querySelector('i');
+
+    if (icon) {
+      icon.className = this.soundMuted
+        ? 'bi bi-volume-mute'
+        : 'bi bi-volume-up';
+    }
   }
 
   setStopEnabled(enabled, reason = '') {
