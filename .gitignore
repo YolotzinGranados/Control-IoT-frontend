@@ -1,0 +1,28 @@
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.key
+*.crt
+*.cer
+*.csr
+*.pem
+*.p12
+*.pfx
+# Entorno y secretos: NUNCA subir a GitHub
+.venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor / SO
+.vscode/
+.idea/
+*.log
+.DS_Store

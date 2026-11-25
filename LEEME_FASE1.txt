@@ -1,0 +1,27 @@
+CONTROL IoT - FASE 1: ALINEACION DE AUTENTICACION CON AWS RDS
+
+CONTENIDO
+- backend/script/migrations/002_auth_schema_alignment_up.sql
+  Alinea los nombres de los roles de forma idempotente. No elimina ni altera tablas.
+- backend/script/migrations/002_auth_schema_alignment_verify.sql
+  Consultas de verificacion de columnas, indices, FK, roles, usuarios y asignaciones.
+- backend/scripts/create_admin.py
+  Sustituye el script anterior. Inserta username, email, nombre, password_hash y activo.
+
+ORDEN DE EJECUCION
+1. En el cliente SQL, seleccionar la conexion AWS y la base vehiculo_iot.
+2. Exportar un respaldo/snapshot de RDS antes de cualquier cambio.
+3. Ejecutar 002_auth_schema_alignment_up.sql.
+4. Revisar todos los resultados y ejecutar 002_auth_schema_alignment_verify.sql.
+5. Sustituir backend/scripts/create_admin.py por el archivo incluido.
+6. Desde backend, ejecutar:
+   .\.venv\Scripts\python.exe -m scripts.create_admin
+
+IMPORTANTE
+- NO ejecutar 001_authentication_down.sql.
+- NO ejecutar nuevamente 001_authentication_up.sql sobre las tablas existentes.
+- No se deben borrar ni recrear tablas de autenticacion.
+- El SQL de esta entrega no altera las tablas IoT ni elimina datos.
+- El script create_admin.py crea solo el primer administrador. Si ya existe uno,
+  se detiene para evitar duplicados.
+- El script requiere que el .env de backend apunte a la base vehiculo_iot de AWS.

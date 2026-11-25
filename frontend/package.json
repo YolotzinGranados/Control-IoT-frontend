@@ -1,0 +1,10 @@
+
+{
+  "name": "control-iot-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check assets/js/api/auth-session.js && node --check assets/js/auth-bootstrap.js && node --check assets/js/api/command-api.js && node --check assets/js/api/demo-api.js && node --check assets/js/api/health-api.js && node --check assets/js/api/http-client.js && node --check assets/js/api/vehicle-api.js && node --check assets/js/app.js && node --check assets/js/config/app-config.js && node --check assets/js/domain/command-catalog.js && node --check assets/js/domain/command-dispatcher.js && node --check assets/js/domain/connectivity-controller.js && node --check assets/js/domain/demo-controller.js && node --check assets/js/domain/joystick-controller.js && node --check assets/js/domain/monitor-data.js && node --check assets/js/ui/connectivity-view.js && node --check assets/js/ui/controls-view.js && node --check assets/js/ui/dashboard-view.js && node --check assets/js/ui/demo-view.js && node --check assets/js/ui/joystick-view.js && node --check assets/js/ui/monitor-view.js && node --check assets/js/ui/navegation.js && node --check assets/js/ui/notifications-view.js && node --check assets/js/ui/pala-joystick-view.js && node --check assets/js/utils/dom.js && node --check assets/js/utils/errors.js && node --check assets/js/utils/monitor-date.js && node --check assets/js/utils/validation.js && node --check assets/js/websocket/websocket-client.js",
+    "test": "node --test ../tests/*.test.js"
+  }
+}

@@ -1,0 +1,1 @@
+-r requirements.txt\npytest>=8.0\nhttpx>=0.27\nwebsockets>=12.0

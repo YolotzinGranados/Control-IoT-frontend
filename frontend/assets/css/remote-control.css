@@ -1,0 +1,913 @@
+/* Carcasa del mando */
+.remote-controller {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 1050px;
+  min-width: 0;
+  margin-inline: auto;
+  padding: 22px 26px 28px;
+  border: 3px solid #d48f3e;
+  border-radius: 65px 65px 90px 90px;
+  background: linear-gradient(
+    160deg,
+    #fec70a 0%,
+    #d48f3e 32%,
+    #89511e 75%,
+    #44270c 100%
+  );
+  box-shadow:
+    inset 0 3px 0 #fefefe70,
+    inset 0 -12px 0 #44270c80,
+    0 18px 35px #00000080;
+}
+
+/* Encabezado central */
+.remote-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: fit-content;
+  margin: 0 auto 24px;
+  padding: 9px 24px;
+  border: 2px solid #d48f3e;
+  border-radius: 12px;
+  background: #000000;
+  color: #fec70a;
+  box-shadow: 0 3px 0 #44270c;
+}
+
+.remote-heading h3 {
+  margin: 0;
+  color: #fefefe;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.remote-heading > i {
+  font-size: 1.35rem;
+}
+
+/* Una sola superficie para los tres grupos */
+.remote-body {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    160px
+    minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.remote-controller .remote-movement,
+.remote-controller .remote-functions,
+.remote-controller .remote-pala {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.remote-controller .remote-movement {
+  grid-row: auto;
+}
+
+.remote-controller .panel-heading {
+  display: block;
+  text-align: center;
+}
+
+.remote-controller .panel-heading h3,
+.remote-controller .remote-pala h3 {
+  margin: 0 0 14px;
+  color: #000000;
+  font-size: .9rem;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+/* Las instrucciones ya están en los nombres y etiquetas */
+.remote-controller .panel-description {
+  display: none;
+}
+
+/* Base izquierda */
+.remote-controller .joystick-stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 310px;
+  min-height: 0;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border: 3px solid #44270c;
+  border-radius: 50%;
+  background: #000000;
+  box-shadow:
+    0 0 0 5px #d48f3e,
+    0 0 0 7px #89511e,
+    inset 0 5px 16px #000000;
+}
+
+.remote-controller .joystick {
+  width: 72%;
+  border: 2px solid #6f6f6e;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #0174e0 0 48%,
+    #000000 49% 100%
+  );
+  box-shadow: inset 0 5px 15px #000000;
+}
+
+/* Mantiene visible la palanca cuando está deshabilitada */
+.remote-controller .joystick[aria-disabled="true"] {
+  opacity: 1;
+  filter: none;
+  cursor: not-allowed;
+}
+
+.remote-controller .joystick-knob {
+  width: 43%;
+  border: 2px solid #d48f3e;
+  background: radial-gradient(
+    circle at 35% 25%,
+    #fec70a,
+    #d48f3e 75%
+  );
+  color: #000000;
+  box-shadow:
+    inset 0 3px 0 #fefefe60,
+    0 6px 0 #89511e,
+    0 10px 18px #00000090;
+}
+
+.remote-controller .joystick-knob span {
+  border-color: #89511e;
+  background: transparent;
+}
+
+.remote-controller .joystick-direction {
+  z-index: 3;
+  color: #fefefe;
+  font-size: .5rem;
+  letter-spacing: 0;
+}
+
+.remote-controller .joystick-direction i {
+  color: #fec70a;
+  font-size: .9rem;
+}
+
+.remote-controller .direction-up {
+  top: 7px;
+}
+
+.remote-controller .direction-down {
+  bottom: 7px;
+}
+
+.remote-controller .direction-left {
+  left: 5px;
+}
+
+.remote-controller .direction-right {
+  right: 5px;
+}
+
+/* Base derecha del mismo tamaño */
+.remote-controller .pala-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  width: 100%;
+  max-width: 310px;
+  min-height: 0;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  padding: 15px;
+  border: 3px solid #44270c;
+  border-radius: 50%;
+  background: #000000;
+  box-shadow:
+    0 0 0 5px #d48f3e,
+    0 0 0 7px #89511e,
+    inset 0 5px 16px #000000;
+}
+
+.remote-controller .pala-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.remote-controller .pala-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.remote-controller .pala-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.remote-controller .pala-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.remote-controller .pala-center {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 2px solid #d48f3e;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 25%,
+    #fec70a,
+    #d48f3e 75%
+  );
+  color: #000000;
+  font-size: 1.5rem;
+  box-shadow:
+    inset 0 3px 0 #fefefe60,
+    0 5px 0 #89511e;
+}
+
+/* Botones direccionales dentro de la base */
+.remote-controller .pala-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 0;
+  padding: 5px 2px;
+  border: 1px solid #41abfb;
+  border-radius: 15px;
+  background: #0174e0;
+  color: #fefefe;
+  text-align: center;
+  box-shadow: inset 0 2px 0 #92d9fc60;
+  touch-action: manipulation;
+}
+
+.remote-controller .pala-button > .bi:first-child {
+  color: #fec70a;
+  font-size: 1.25rem;
+}
+
+.remote-controller .remote-button-label {
+  font-size: .65rem;
+  font-weight: 750;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.remote-controller .command-state-icon {
+  display: none;
+}
+
+/* Funciones centrales */
+.remote-controller .remote-functions {
+  align-self: center;
+}
+
+.remote-controller .command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.remote-controller .remote-function-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 9px 4px;
+  border: 2px solid #d48f3e;
+  border-radius: 13px;
+  background: #000000;
+  color: #fefefe;
+  text-align: center;
+  box-shadow: 0 4px 0 #44270c;
+}
+
+.remote-controller .remote-function-button > .bi:first-child {
+  color: #fec70a;
+  font-size: 1.35rem;
+}
+
+.remote-controller .remote-function-button {
+  position: relative;
+  aspect-ratio: 1;
+  min-height: 64px;
+  padding: 10px;
+  font-size: 1.4rem;
+}
+
+.remote-controller .remote-function-button[title]:hover::after,
+.remote-controller .remote-function-button[title]:focus-visible::after {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  width: max-content;
+  max-width: min(220px, 75vw);
+  padding: 5px 8px;
+  border: 1px solid #d48f3e;
+  border-radius: 7px;
+  background: #090f18;
+  color: #fff;
+  content: attr(title);
+  font-size: .68rem;
+  line-height: 1.25;
+  transform: translateX(-50%);
+}
+
+.remote-controller .remote-function-button.stop-button {
+  display: grid;
+  width: auto;
+  min-height: 64px;
+  border-color: #d48f3e;
+  border-radius: 13px;
+  background: #000;
+  color: #fec70a;
+  box-shadow: 0 4px 0 #44270c;
+}
+
+.remote-controller .remote-function-button.stop-button i {
+  grid-row: auto;
+  font-size: 1.4rem;
+}
+
+.remote-controller .remote-function-button.stop-button:hover:not(:disabled) {
+  border-color: #fec70a;
+  background: #89511e;
+}
+
+.remote-controller .remote-function-button.stop-button[data-state="accepted"] {
+  border-color: #4ade80;
+  background: #14532d;
+}
+
+.remote-controller .remote-function-button.stop-button[data-state="error"] {
+  border-color: var(--danger);
+  background: #7f1d1d;
+}
+
+.remote-controller .remote-function-button.stop-button:disabled {
+  opacity: .42;
+}
+
+.remote-controller .remote-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px 8px;
+  border-radius: 12px;
+  background: #44270c;
+  color: #fefefe;
+  font-size: .72rem;
+  text-align: center;
+}
+
+/* Estado de los controles */
+.remote-controller .joystick-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 18px;
+}
+
+.remote-controller .joystick-status {
+  color: #fefefe;
+  font-size: .74rem;
+}
+
+.remote-controller #joystick-availability,
+.remote-controller .pala-feedback {
+  color: #fefefe;
+  font-size: .7rem;
+  text-align: center;
+}
+
+.remote-controller .pala-feedback {
+  margin: 18px 0 0;
+}
+
+.remote-controller .direction-availability {
+  justify-content: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.remote-controller .direction-tag {
+  padding: 3px 6px;
+  border-color: #d48f3e;
+  background: #44270c;
+  color: #fefefe;
+  font-size: .55rem;
+}
+
+.remote-controller .direction-tag.is-available {
+  border-color: #92d9fc;
+  background: #0174e0;
+}
+
+/* Se conserva la apariencia del mando sin conexión */
+.remote-controller .command-button:disabled,
+.remote-controller .command-button[data-state="disabled"] {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.remote-controller .command-button:disabled {
+  border-color: #6f6f6e;
+  box-shadow: none;
+}
+
+.remote-controller .command-button:hover:not(:disabled) {
+  border-color: #fec70a;
+  background: #89511e;
+  color: #fefefe;
+  transform: none;
+}
+
+.remote-controller .command-button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.remote-controller .command-button[data-state="sending"] {
+  outline: 2px solid #92d9fc;
+}
+
+.remote-controller .command-button[data-state="accepted"] {
+  border-color: #92d9fc;
+}
+
+.remote-controller .command-button[data-state="error"] {
+  border-color: var(--danger);
+}
+
+/* Parada en la parte inferior del mando */
+.remote-controller .remote-stop {
+  width: min(100%, 360px);
+  margin: 22px auto 0;
+  padding-top: 14px;
+  border-top: 1px solid #fec70a80;
+}
+
+.remote-controller .remote-stop .stop-button {
+  min-height: 54px;
+}
+
+.remote-controller .remote-stop .stop-help {
+  color: #fefefe;
+  text-align: center;
+  font-size: .68rem;
+}
+
+/* Tamaños comunes */
+.remote-controller,
+.remote-controller * {
+  box-sizing: border-box;
+}
+
+.remote-controller {
+  width: 100%;
+  max-width: 1050px;
+  min-width: 0;
+}
+
+.remote-body > * {
+  min-width: 0;
+}
+
+.remote-controller .joystick-stage,
+.remote-controller .pala-pad {
+  width: 100%;
+  max-width: 310px;
+  min-height: 0;
+  aspect-ratio: 1;
+  margin-inline: auto;
+}
+
+.remote-controller .remote-button-label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.remote-controller .direction-availability {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.remote-controller .direction-tag {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+/* Tablet */
+@media (max-width: 760px) {
+  .remote-controller {
+    padding: 22px 20px 28px;
+    border-radius: 36px 36px 50px 50px;
+  }
+
+  .remote-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-items: start;
+  }
+
+  .remote-controller .remote-movement {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .remote-controller .remote-pala {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .remote-controller .remote-functions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+
+  .remote-controller .command-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    max-width: 420px;
+    margin-inline: auto;
+    gap: 10px;
+  }
+
+  .remote-controller .remote-function-button {
+    min-height: 76px;
+  }
+
+  .remote-controller .remote-stop {
+    width: 100%;
+    max-width: 420px;
+  }
+}
+
+/* Celular */
+@media (max-width: 600px) {
+  .remote-controller {
+    padding: 20px 16px 26px;
+    border-radius: 28px;
+  }
+
+  .remote-heading {
+    max-width: 100%;
+    padding: 9px 16px;
+    margin-bottom: 22px;
+  }
+
+  .remote-heading h3 {
+    font-size: .95rem;
+  }
+
+  .remote-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+  }
+
+  .remote-controller .remote-movement {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .remote-controller .remote-functions {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .remote-controller .remote-pala {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .remote-controller .joystick-stage,
+  .remote-controller .pala-pad {
+    max-width: 280px;
+  }
+
+  .remote-controller .joystick {
+    width: 72%;
+  }
+
+  .remote-controller .panel-heading h3,
+  .remote-controller .remote-pala h3 {
+    margin-bottom: 14px;
+    font-size: .85rem;
+  }
+
+  .remote-controller .joystick-direction span {
+    display: block;
+    font-size: .48rem;
+  }
+
+  .remote-controller .joystick-direction i {
+    font-size: .85rem;
+  }
+
+  .remote-controller .pala-pad {
+    padding: 10px;
+    gap: 5px;
+  }
+
+  .remote-controller .pala-button {
+    padding: 5px 2px;
+    border-radius: 12px;
+    gap: 4px;
+  }
+
+  .remote-controller .pala-button > .bi:first-child {
+    font-size: 1.15rem;
+  }
+
+  .remote-controller .pala-button .remote-button-label {
+    font-size: .6rem;
+  }
+
+  .remote-controller .pala-center {
+    font-size: 1.35rem;
+  }
+
+  .remote-controller .command-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 280px;
+    gap: 12px;
+  }
+  .remote-controller .remote-power-button {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 58px;
+  min-height: 58px;
+  aspect-ratio: 1;
+}
+  .remote-controller .remote-function-button {
+    min-height: 76px;
+  }
+
+  .remote-controller .remote-function-button .remote-button-label {
+    font-size: .75rem;
+  }
+
+  .remote-controller .remote-stop {
+    max-width: 280px;
+    margin-top: 24px;
+  }
+
+  .remote-controller .stop-button {
+    min-height: 58px;
+  }
+}
+.remote-controller .pala-center {
+  position: relative;
+  z-index: 5;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  transform: translate(
+    var(--pala-x, 0px),
+    var(--pala-y, 0px)
+  );
+}
+
+.remote-controller .pala-center > * {
+  pointer-events: none;
+}
+
+.remote-controller .pala-center.is-dragging {
+  cursor: grabbing;
+}
+
+.remote-controller .pala-center[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.remote-controller .pala-center:focus-visible {
+  outline: 3px solid #92d9fc;
+  outline-offset: 4px;
+}
+
+/* Pala con palanca arrastrable */
+.remote-controller .pala-pad.pala-stick {
+  position: relative;
+  display: block;
+  padding: 0;
+  gap: 0;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Aro interior y disco azul, similares al joystick izquierdo */
+.remote-controller .pala-stick::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  height: 72%;
+  border: 2px solid #6f6f6e;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #0174e0 0 48%,
+    #000000 49% 100%
+  );
+  box-shadow: inset 0 5px 15px #000000;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Palanca central */
+.remote-controller .pala-stick .pala-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+
+  display: grid;
+  place-items: center;
+
+  width: 31%;
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+
+  border: 2px solid #d48f3e;
+  border-radius: 50%;
+
+  background: radial-gradient(
+    circle at 35% 25%,
+    #fec70a,
+    #d48f3e 75%
+  );
+
+  color: #000000;
+  font-size: 1.4rem;
+
+  box-shadow:
+    inset 0 3px 0 #fefefe60,
+    0 6px 0 #89511e,
+    0 10px 18px #00000090;
+
+  transform: translate(
+    calc(-50% + var(--pala-x, 0px)),
+    calc(-50% + var(--pala-y, 0px))
+  );
+
+  transition: transform 140ms ease-out;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  z-index: 3;
+}
+
+/* Durante el arrastre sigue inmediatamente al puntero */
+.remote-controller .pala-stick .pala-center.is-dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+.remote-controller .pala-stick .pala-center[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.remote-controller .pala-stick .pala-center:focus-visible {
+  outline: 3px solid #92d9fc;
+  outline-offset: 5px;
+}
+
+.remote-controller .pala-stick .pala-knob-ring {
+  display: grid;
+  place-items: center;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 1px solid #89511e;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: none;
+}
+
+.remote-controller .pala-stick .pala-center * {
+  pointer-events: none;
+}
+
+/* Etiquetas direccionales sin botones */
+.remote-controller .pala-direction-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+
+  width: max-content;
+  max-width: 28%;
+  padding: 0;
+  margin: 0;
+
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+
+  color: #fefefe;
+  font-size: .5rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+
+  pointer-events: none;
+  z-index: 2;
+}
+
+.remote-controller .pala-direction-label i {
+  color: #fec70a;
+  font-size: .9rem;
+}
+
+.remote-controller .pala-direction-label[data-available="false"] {
+  opacity: .45;
+}
+
+.remote-controller .pala-label-up {
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.remote-controller .pala-label-down {
+  bottom: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.remote-controller .pala-label-left {
+  top: 50%;
+  left: 5px;
+  transform: translateY(-50%);
+}
+
+.remote-controller .pala-label-right {
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+}
+
+.remote-controller .pala-stick-help {
+  margin: 6px 0 0;
+  color: #fefefe;
+  font-size: .7rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .remote-controller .pala-direction-label {
+    font-size: .48rem;
+  }
+
+  .remote-controller .pala-direction-label i {
+    font-size: .85rem;
+  }
+
+  .remote-controller .pala-stick .pala-center {
+    font-size: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .remote-controller .pala-stick .pala-center {
+    transition: none;
+  }
+}
