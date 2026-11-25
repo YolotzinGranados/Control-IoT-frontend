@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, Header, Request, Response
 
 from app.core.config import get_settings
 from app.core.dependencies import get_db
-from app.core.auth import get_current_principal, Principal
+from app.core.auth import (
+    get_current_principal,
+    require_roles,
+    Principal,
+)
 from app.core.exceptions import BadRequestError, UnauthorizedError
 from app.models.auth import (
     GuestRegisterIn,
@@ -270,3 +274,22 @@ def me(
     response.headers["Cache-Control"] = "no-store"
 
     return _user_out(user)
+
+
+@router.get(
+    "/me/vehiculos",
+    summary="Listar vehículos asignados al comprador",
+)
+def mis_vehiculos(
+    response: Response,
+    principal: Principal = Depends(require_roles("user")),
+    db=Depends(get_db),
+):
+    """Lista solo las unidades activas del usuario autenticado."""
+    from app.repositories.auth_repository import AuthRepository
+
+    response.headers["Cache-Control"] = "no-store"
+
+    return AuthRepository(db).list_assigned_vehicles(
+        principal.id_usuario
+    )

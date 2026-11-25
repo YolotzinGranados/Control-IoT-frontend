@@ -493,3 +493,45 @@ class AuthRepository:
             finally:
                 cur.close()
 
+
+    def list_assigned_vehicles(self, user_id: int) -> list[dict]:
+        """Devuelve únicamente vehículos activos asignados al comprador."""
+        with self.db.connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            try:
+                cur.execute(
+                    """
+                    SELECT
+                        v.id_vehiculo,
+                        v.nombre,
+                        v.modelo,
+                        v.descripcion,
+                        v.microcontrolador,
+                        v.activo
+                    FROM auth_vehiculo_asignaciones a
+                    INNER JOIN vehiculos v
+                        ON v.id_vehiculo = a.id_vehiculo
+                    WHERE a.id_usuario = %s
+                      AND a.estado = 'activa'
+                      AND a.fecha_revocacion IS NULL
+                      AND v.activo = 1
+                    ORDER BY v.id_vehiculo ASC
+                    """,
+                    (user_id,),
+                )
+
+                rows = cur.fetchall() or []
+
+                return [
+                    {
+                        "id_vehiculo": int(row["id_vehiculo"]),
+                        "nombre": row["nombre"],
+                        "modelo": row.get("modelo"),
+                        "descripcion": row.get("descripcion"),
+                        "microcontrolador": row.get("microcontrolador"),
+                        "activo": bool(row["activo"]),
+                    }
+                    for row in rows
+                ]
+            finally:
+                cur.close()

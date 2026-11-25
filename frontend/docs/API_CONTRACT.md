@@ -17,13 +17,15 @@ Las rutas protegidas reciben:
 Authorization: Bearer <access_token>
 ```
 
-El access token se conserva en memoria en el frontend. El refresh token se conserva en cookie `HttpOnly`, `Secure`, `SameSite=None`; las operaciones `/auth/refresh` y `/auth/logout` requieren `X-CSRF-Token`.
+El access token se conserva en memoria en el frontend. Admin y clientes conservan el refresh token en cookie `HttpOnly`, `Secure`, `SameSite=None`; las operaciones `/auth/refresh` y `/auth/logout` requieren `X-CSRF-Token`. El invitado no recibe refresh token: su access token expira y la sesión no se renueva.
 
 Rutas de autenticación:
 
 | Método | Ruta | Función |
 |---|---|---|
-| POST | `/auth/registro-invitado` | Crea cuenta con perfil `guest` |
+| POST | `/auth/registro-invitado` | Crea cuenta con perfil `guest` y sesión temporal |
+| GET | `/invitado/catalogo` | Lista vehículos activos habilitados para exhibición |
+| POST | `/invitado/vehiculos/{id}/demos/{id_demo}/iniciar` | Inicia una DEMO temporal limitada para invitado |
 | POST | `/auth/login` | Inicia sesión |
 | GET | `/auth/csrf` | Recupera el token CSRF para restaurar sesión cross-origin |
 | POST | `/auth/refresh` | Rota refresh token y emite access token nuevo |
@@ -34,7 +36,7 @@ Rutas de autenticación:
 
 - `admin`: puede operar y listar únicamente el inventario sin asignación activa; las unidades vendidas quedan fuera del listado. No obtiene acceso automático a vehículos asignados a compradores.
 - `user`: solo puede consultar/controlar vehículos con asignación propia en estado `activa` y `fecha_revocacion IS NULL` en `auth_vehiculo_asignaciones`.
-- `guest`: puede registrarse, pero todavía no tiene acceso WSS ni sesiones temporales de exhibición.
+- `guest`: sesión de acceso temporal no renovable (15 minutos por defecto); solo puede consultar `/invitado/catalogo`, iniciar DEMO de hasta 3 minutos y recibir eventos WSS de vehículos marcados `es_exhibicion=1` que no tengan asignación activa de cliente. No puede usar las rutas generales de vehículo, control manual, historial, administración ni cancelar DEMOs.
 - El acceso de soporte administrativo a un vehículo vendido requiere un permiso explícito que aún no está implementado.
 
 Las API keys heredadas solo se aceptan cuando `ENABLE_LEGACY_API_KEYS=true`. El valor predeterminado es `false`; no deben habilitarse en producción.
@@ -64,7 +66,7 @@ El navegador no permite establecer libremente una cabecera `Authorization` en `n
 new WebSocket(url, ["bearer", accessToken]);
 ```
 
-El servidor valida el JWT, consulta de nuevo la cuenta y sus roles en RDS, valida la asignación del vehículo y negocia únicamente el subprotocolo `bearer`. El token nunca se coloca en la URL ni se devuelve en la respuesta del handshake.
+El servidor valida el JWT, consulta de nuevo la cuenta y sus roles en RDS, valida la autorización del vehículo y negocia únicamente el subprotocolo `bearer`. Admin y user se validan por inventario/asignación; guest se valida contra `es_exhibicion=1` y ausencia de asignación activa. El token nunca se coloca en la URL ni se devuelve en la respuesta del handshake.
 
 Códigos de cierre usados por la ruta:
 
@@ -120,4 +122,5 @@ El script solicita API/WSS y permite iniciar sesión con correo/contraseña (ocu
 
 - La autenticación del WSS es para clientes de usuario. Si el firmware ESP8266/ESP32 utiliza esta misma ruta, necesita un mecanismo separado de identidad de dispositivo; no debe reutilizar tokens de usuario.
 - El evento WSS confirma una notificación del backend, no la ejecución física del motor.
+- La migración `backend/script/migrations/003_guest_exhibition_up.sql` agrega `vehiculos.es_exhibicion`, desactivado por defecto. Se debe habilitar explícitamente una unidad de exhibición antes de que aparezca en el catálogo.
 - La suite automatizada no se conecta a AWS ni al hardware real.

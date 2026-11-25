@@ -120,6 +120,13 @@ export class WebSocketClient {
         return;
       }
 
+      if (event.code === 4401) {
+        this.started = false;
+        this.onState('offline');
+        this.onError(new Error('La sesión expiró. Inicia sesión nuevamente.'));
+        return;
+      }
+
       if ([4403, 4404].includes(event.code)) {
         this.started = false;
         this.onState('offline');

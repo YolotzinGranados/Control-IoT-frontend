@@ -3,11 +3,11 @@
 ## Flujo implementado
 
 1. El usuario inicia sesión en `POST /auth/login` o se registra mediante `POST /auth/registro-invitado`.
-2. FastAPI devuelve el access token y el token CSRF en el cuerpo; establece refresh token `HttpOnly` y cookie CSRF `Secure`, `SameSite=None`.
+2. FastAPI devuelve el access token y el token CSRF en el cuerpo. Admin y clientes reciben refresh token `HttpOnly` y cookie CSRF `Secure`, `SameSite=None`; guest no recibe refresh token y su sesión es temporal.
 3. El frontend conserva el access token y el CSRF token solo en memoria. No utiliza `localStorage` ni `sessionStorage`.
 4. Las peticiones REST protegidas incluyen `Authorization: Bearer <access_token>`.
 5. WSS envía el JWT en los subprotocolos `['bearer', accessToken]`; no lo añade a la URL.
-6. Antes de expirar el access token, el frontend intenta rotarlo mediante `/auth/refresh`.
+6. Antes de expirar el access token, el frontend de admin/cliente intenta rotarlo mediante `/auth/refresh`. La sesión guest no se renueva y termina al expirar su access token.
 7. Al restaurar la página, el frontend solicita `/auth/csrf` con `credentials: include`, renueva la sesión y consulta `/auth/me`.
 8. El cierre de sesión envía `X-CSRF-Token`, revoca la sesión y limpia el estado local.
 
@@ -19,9 +19,9 @@ GitHub Pages y la API están en orígenes distintos. JavaScript del frontend no 
 
 - `admin`: inventario no asignado.
 - `user`: vehículos con asignación activa a su cuenta.
-- `guest`: registro habilitado; las sesiones de exhibición y el acceso WSS de invitado siguen pendientes.
+- `guest`: sesión temporal no renovable; consulta únicamente `/invitado/catalogo`, inicia DEMO limitada en unidades activas marcadas `es_exhibicion=1` y recibe eventos WSS solo de esas unidades sin asignación activa de comprador. No tiene acceso al control manual, historial ni administración.
 
-La autorización se vuelve a validar en el backend. Ocultar botones en el frontend no sustituye el control del servidor.
+La autorización se vuelve a validar en el backend. Ocultar botones en el frontend no sustituye el control del servidor. La migración `003_guest_exhibition_up.sql` agrega la bandera `vehiculos.es_exhibicion`, desactivada por defecto; habilita manualmente solo vehículos dedicados a exhibición.
 
 ## Cookies y navegadores
 
