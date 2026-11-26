@@ -55,20 +55,18 @@
           </div>
 
           <form id="vehicle-form" class="vehicle-form">
-            <label for="vehicle-id">ID del carrito</label>
+            <label for="vehicle-id">Vehículo asignado</label>
 
             <div class="vehicle-fields">
-              <input
+              <select
                 id="vehicle-id"
                 class="app-input"
-                type="number"
-                inputmode="numeric"
-                min="1"
-                max="9007199254740991"
                 aria-describedby="vehicle-feedback"
                 required
                 disabled
               >
+                <option value="">Cargando vehículos asignados…</option>
+              </select>
 
               <button
                 id="vehicle-submit"

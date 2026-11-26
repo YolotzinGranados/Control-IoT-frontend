@@ -1,4 +1,3 @@
-
 """Configuración central de FastAPI y Amazon RDS."""
 from functools import lru_cache
 from pathlib import Path
@@ -38,6 +37,7 @@ class Settings(BaseSettings):
     # Autenticación de usuarios
     auth_secret_key: Optional[SecretStr] = None
     auth_access_ttl_minutes: int = 10
+    auth_guest_ttl_minutes: int = 15
     auth_refresh_ttl_days: int = 14
 
     # Cookies de sesión

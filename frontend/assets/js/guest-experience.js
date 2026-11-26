@@ -1,6 +1,6 @@
 import { APP_CONFIG } from './config/app-config.js';
 
-import { HttpClient } from './api/http-client.js';
+import { HttpClient, getAccessToken } from './api/http-client.js';
 
 import { WebSocketClient } from './websocket/websocket-client.js';
 
@@ -150,7 +150,7 @@ export class GuestExperience {
 
     try {
 
-      const data = await http.get('/vehiculos?incluir_detalle=true');
+      const data = await http.get('/invitado/catalogo');
 
       if (!Array.isArray(data)) {
 
@@ -388,7 +388,11 @@ this.connectionPromise = new Promise((resolve, reject) => {
       }, 10000);
 
       this.socket = new WebSocketClient(vehicleSocketUrl(vehicleId), {
-reconnectBaseMs: APP_CONFIG.WS_RECONNECT_BASE_MS,
+        getProtocols: () => {
+          const token = getAccessToken();
+          return token ? ['bearer', token] : [];
+        },
+        reconnectBaseMs: APP_CONFIG.WS_RECONNECT_BASE_MS,
 
         reconnectMaxMs: APP_CONFIG.WS_RECONNECT_MAX_MS,
 
@@ -674,7 +678,7 @@ reconnectBaseMs: APP_CONFIG.WS_RECONNECT_BASE_MS,
 
     const percent = this.total > 0
 
-      ? Math.min(100, Math.round((Number(order) / this.total) \* 100))
+      ? Math.min(100, Math.round((Number(order) / this.total) * 100))
 
       : 0;
 

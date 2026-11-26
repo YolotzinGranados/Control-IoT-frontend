@@ -30,7 +30,7 @@ const healthApi = new HealthApi(http, APP_CONFIG.HEALTH_PATH);
 const dashboardView = new DashboardView();
 const connectivityView = new ConnectivityView();
 const notifications = new NotificationsView();
-let vehicleId = APP_CONFIG.VEHICLE_ID;
+let vehicleId = Number(window.__CONTROL_IOT_VEHICLE_ID__) || APP_CONFIG.VEHICLE_ID;
 let switchingVehicle = false;
 const monitorView = new MonitorView({ http, vehicleId });
 
@@ -669,19 +669,34 @@ function bindVehicleSelection() {
   const submit = $('#vehicle-submit');
   const feedback = $('#vehicle-feedback');
 
-  input.value = vehicleId;
-  input.disabled = false;
-  submit.disabled = false;
+  const allowedVehicles = Array.isArray(window.__CONTROL_IOT_ALLOWED_VEHICLES__)
+    ? window.__CONTROL_IOT_ALLOWED_VEHICLES__
+    : null;
+
+  if (allowedVehicles) {
+    input.replaceChildren(...allowedVehicles.map((vehicle) => {
+      const option = document.createElement('option');
+      option.value = String(Number(vehicle.id_vehiculo));
+      option.textContent = `${vehicle.nombre || `Vehículo ${vehicle.id_vehiculo}`} · #${Number(vehicle.id_vehiculo)}`;
+      return option;
+    }));
+  }
+
+  input.value = String(vehicleId);
+  const canChooseVehicle = !allowedVehicles || allowedVehicles.length > 1;
+  input.disabled = !canChooseVehicle;
+  submit.disabled = !canChooseVehicle;
 
   $('#vehicle-form').addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    const id = input.valueAsNumber;
+    const id = Number(input.value);
 
     if (
       switchingVehicle
       || !Number.isSafeInteger(id)
       || id < 1
+      || (allowedVehicles && !allowedVehicles.some((vehicle) => Number(vehicle.id_vehiculo) === id))
     ) {
       return;
     }
@@ -751,8 +766,8 @@ function bindVehicleSelection() {
       setText(feedback, friendlyError(error));
     } finally {
       switchingVehicle = false;
-      input.disabled = false;
-      submit.disabled = false;
+      input.disabled = !canChooseVehicle;
+      submit.disabled = !canChooseVehicle;
 
       updateControlAvailability();
     }
@@ -760,6 +775,11 @@ function bindVehicleSelection() {
 }
 
 async function init() {
+  window.__CONTROL_IOT_SHUTDOWN__ = () => {
+    neutralizeBoth();
+    websocketClient.stop();
+  };
+
   bindViews();
   monitorView.refresh();
 

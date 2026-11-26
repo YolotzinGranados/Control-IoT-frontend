@@ -90,12 +90,19 @@ async def websocket_vehiculo(websocket: WebSocket, id_vehiculo: int):
         servicio = crear_estado_service(app.state.db, app.state.executor)
         estado = await run_in_threadpool(servicio.obtener, id_vehiculo)
 
-        autorizado = await run_in_threadpool(
-            AuthRepository(app.state.db).can_access_vehicle,
-            principal.id_usuario,
-            principal.roles,
-            id_vehiculo,
-        )
+        permisos = AuthRepository(app.state.db)
+        if "guest" in principal.roles:
+            autorizado = await run_in_threadpool(
+                permisos.can_access_guest_vehicle,
+                id_vehiculo,
+            )
+        else:
+            autorizado = await run_in_threadpool(
+                permisos.can_access_vehicle,
+                principal.id_usuario,
+                principal.roles,
+                id_vehiculo,
+            )
         if not autorizado:
             raise ForbiddenError("No tienes autorización para este vehículo")
 
@@ -130,6 +137,19 @@ async def websocket_vehiculo(websocket: WebSocket, id_vehiculo: int):
                 break
 
             if texto.strip().lower() == "ping":
+                if "guest" in principal.roles:
+                    sigue_autorizado = await run_in_threadpool(
+                        AuthRepository(app.state.db).can_access_guest_vehicle,
+                        id_vehiculo,
+                    )
+                    if not sigue_autorizado:
+                        await _cerrar_con_error(
+                            websocket,
+                            id_vehiculo,
+                            "El vehículo dejó de estar habilitado para exhibición",
+                            CODIGO_SIN_PERMISO,
+                        )
+                        break
                 await websocket.send_json(ev.evento(ev.PONG, id_vehiculo))
 
     except WebSocketDisconnect:

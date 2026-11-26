@@ -35,6 +35,8 @@ function stopSessionTimers() {
 
 function clearLocalSession() {
   stopSessionTimers();
+  try { window.__CONTROL_IOT_SHUTDOWN__?.(); } catch { /* cierre local seguro */ }
+  window.__CONTROL_IOT_SHUTDOWN__ = undefined;
   guestExperience?.destroy();
   guestExperience = null;
   clearAccessToken();
@@ -295,13 +297,12 @@ async function apiFetch(path, options = {}) {
 }
 
 const modules = [
-  ['modelos', '▱', 'Modelos', 'Catálogo comercial de vehículos'],
-  ['inventario', '▦', 'Inventario', 'Registro y disponibilidad de unidades'],
-  ['clientes', '♙', 'Clientes', 'Gestión de compradores'],
-  ['asignaciones', '⇄', 'Asignaciones', 'Relación entre clientes y vehículos'],
-  ['demos', '▶', 'DEMO de empresa', 'Secuencias comerciales de exhibición'],
-  ['auditoria', '⬡', 'Auditoría y soporte', 'Operaciones y registros'],
-  ['mensajes', '✉', 'Mensajes', 'Comunicación con clientes e invitados'],
+  ['modelos', '▱', 'Modelos', 'Catálogo de modelos registrados'],
+  ['inventario', '▦', 'Inventario', 'Vehículos, disponibilidad y exhibición'],
+  ['clientes', '♙', 'Clientes', 'Cuentas de compradores'],
+  ['asignaciones', '⇄', 'Asignaciones', 'Vehículos asignados a clientes'],
+  ['demos', '▶', 'Demostraciones', 'Secuencias de operación y exhibición'],
+  ['auditoria', '◷', 'Actividad', 'Historial y trazabilidad del sistema'],
 ];
 
 function adminShell(title, active, content) {
@@ -314,18 +315,18 @@ function adminShell(title, active, content) {
           <div><strong>CONTROL IoT</strong><small>PLATAFORMA EMPRESARIAL</small></div>
         </div>
         <div class="admin-user">
-          <div class="admin-avatar">A</div>
+          <div class="admin-avatar">${escapeHTML((currentUser?.nombre || 'A').slice(0, 1).toUpperCase())}</div>
           <div>
             <strong>${escapeHTML(currentUser?.nombre || currentUser?.email || 'Administrador')}</strong>
             <small>Administrador</small>
           </div>
         </div>
-        <nav class="admin-navigation">
-          <span class="admin-nav-label">PRINCIPAL</span>
-          <button class="admin-nav-item ${active === 'inicio' ? 'active' : ''}" data-page="inicio"><span>⌂</span>Resumen general</button>
-          <span class="admin-nav-label">GESTIÓN</span>
+        <nav class="admin-navigation" aria-label="Navegación administrativa">
+          <span class="admin-nav-label">OVERVIEW</span>
+          <button class="admin-nav-item ${active === 'inicio' ? 'active' : ''}" data-page="inicio" type="button"><span>⌂</span>Dashboard</button>
+          <span class="admin-nav-label">MANAGEMENT</span>
           ${modules.map(([id, icon, label]) => `
-            <button class="admin-nav-item ${active === id ? 'active' : ''}" data-page="${id}">
+            <button class="admin-nav-item ${active === id ? 'active' : ''}" data-page="${id}" type="button">
               <span>${icon}</span>${label}
             </button>`).join('')}
         </nav>
@@ -333,13 +334,19 @@ function adminShell(title, active, content) {
       </aside>
       <main class="admin-main">
         <header class="admin-topbar">
-          <div>
-            <span class="admin-breadcrumb">CONTROL IoT / ADMINISTRACIÓN</span>
-            <h1>${escapeHTML(title)}</h1>
+          <div class="admin-search-placeholder"><span>⌕</span> CONTROL IoT / ADMINISTRACIÓN</div>
+          <div class="admin-top-actions">
+            <span class="admin-top-role">ADMIN</span>
+            <span class="admin-top-avatar">${escapeHTML((currentUser?.nombre || 'A').slice(0, 1).toUpperCase())}</span>
           </div>
-          <button class="admin-icon-button" data-page="mensajes" title="Mensajes" type="button">✉</button>
         </header>
-        <section class="admin-content">${content}</section>
+        <section class="admin-content">
+          <div class="admin-page-heading">
+            <div><p class="admin-breadcrumb">PANEL DE CONTROL</p><h1>${escapeHTML(title)}</h1></div>
+            ${active !== 'inicio' ? '<button class="admin-secondary" data-page="inicio" type="button">← Dashboard</button>' : ''}
+          </div>
+          ${content}
+        </section>
       </main>
     </div>`;
 
@@ -349,7 +356,7 @@ function adminShell(title, active, content) {
   });
 }
 
-function renderAdmin() {
+async function renderAdmin() {
   const cards = modules.map(([id, icon, label, description]) => `
     <button class="admin-module-card" data-page="${id}" type="button">
       <span class="admin-module-icon">${icon}</span>
@@ -358,42 +365,84 @@ function renderAdmin() {
       <small>${description}</small>
     </button>`).join('');
 
-  adminShell('Resumen general', 'inicio', `
+  adminShell('Dashboard', 'inicio', `
     <div class="admin-welcome">
       <div>
         <span class="admin-eyebrow">CENTRO DE OPERACIONES</span>
-        <h2>Bienvenido, ${escapeHTML(currentUser?.nombre || 'Administrador')}</h2>
-        <p>Administra los recursos y operaciones de tu empresa.</p>
+        <h2>Buenos días, ${escapeHTML(currentUser?.nombre || 'Administrador')}</h2>
+        <p>Resumen de vehículos, clientes y actividad de la plataforma.</p>
       </div>
       <div class="admin-welcome-symbol">◈</div>
     </div>
-    <div class="admin-section-heading">
-      <div><h2>Módulos de gestión</h2><p>Selecciona el área que deseas administrar.</p></div>
+    <div id="admin-dashboard-data">
+      <div class="admin-loading">Consultando indicadores de RDS…</div>
     </div>
-    <div class="admin-module-grid">${cards}</div>
-    <div class="admin-information">
-      <span>●</span>
-      <div><strong>Plataforma conectada</strong><p>Las consultas y operaciones disponibles se realizan contra el backend.</p></div>
-    </div>`);
+    <div class="admin-section-heading">
+      <div><h2>Gestión de la plataforma</h2><p>Accede a los módulos administrativos.</p></div>
+    </div>
+    <div class="admin-module-grid">${cards}</div>`);
+
+  try {
+    const stats = await apiFetch('/admin/dashboard');
+    const target = document.getElementById('admin-dashboard-data');
+    if (!target) return;
+    const unassigned = Math.max(0, Number(stats.vehiculos_activos || 0) - Number(stats.asignaciones_activas || 0));
+    const assignedPct = Number(stats.vehiculos_activos || 0)
+      ? Math.round((Number(stats.asignaciones_activas || 0) / Number(stats.vehiculos_activos)) * 100)
+      : 0;
+
+    target.innerHTML = `
+      <div class="admin-stat-grid">
+        <article class="admin-stat-card"><span class="admin-stat-icon">▣</span><small>Vehículos activos</small><strong>${Number(stats.vehiculos_activos || 0).toLocaleString('es-MX')}</strong><em>Inventario registrado: ${Number(stats.vehiculos_total || 0)}</em></article>
+        <article class="admin-stat-card"><span class="admin-stat-icon">♙</span><small>Clientes activos</small><strong>${Number(stats.clientes_activos || 0).toLocaleString('es-MX')}</strong><em>Cuentas con perfil usuario</em></article>
+        <article class="admin-stat-card"><span class="admin-stat-icon">⇄</span><small>Asignaciones activas</small><strong>${Number(stats.asignaciones_activas || 0).toLocaleString('es-MX')}</strong><em>Vehículos vinculados a clientes</em></article>
+        <article class="admin-stat-card"><span class="admin-stat-icon">▶</span><small>DEMO disponibles</small><strong>${Number(stats.demos_activas || 0).toLocaleString('es-MX')}</strong><em>Secuencias habilitadas</em></article>
+      </div>
+      <div class="admin-dashboard-grid">
+        <article class="admin-dashboard-panel">
+          <div class="admin-panel-heading"><div><p class="admin-eyebrow">INVENTARIO</p><h3>Disponibilidad de vehículos</h3></div><button class="admin-text-action" data-page="inventario" type="button">Ver inventario →</button></div>
+          <div class="admin-inventory-total"><strong>${Number(stats.vehiculos_activos || 0)}</strong><span>vehículos activos</span></div>
+          <div class="admin-progress-track"><span style="width:${assignedPct}%"></span></div>
+          <div class="admin-progress-legend"><span><i class="admin-dot assigned"></i> Asignados <b>${Number(stats.asignaciones_activas || 0)}</b></span><span><i class="admin-dot available"></i> Sin asignar <b>${unassigned}</b></span></div>
+        </article>
+        <article class="admin-dashboard-panel admin-status-panel">
+          <div class="admin-panel-heading"><div><p class="admin-eyebrow">ACCESOS</p><h3>Perfiles registrados</h3></div></div>
+          <div class="admin-profile-row"><span class="admin-profile-symbol">♙</span><div><strong>Clientes</strong><small>Control de vehículos asignados</small></div><b>${Number(stats.clientes_activos || 0)}</b></div>
+          <div class="admin-profile-row"><span class="admin-profile-symbol">◎</span><div><strong>Invitados</strong><small>Sesiones de exhibición</small></div><b>${Number(stats.invitados_activos || 0)}</b></div>
+          <div class="admin-profile-row"><span class="admin-profile-symbol">◈</span><div><strong>Administrador</strong><small>Gestión de la plataforma</small></div><b>Activo</b></div>
+        </article>
+      </div>`;
+    target.querySelectorAll('[data-page]').forEach((button) => {
+      button.addEventListener('click', () => openAdminPage(button.dataset.page));
+    });
+  } catch (error) {
+    const target = document.getElementById('admin-dashboard-data');
+    if (target) target.innerHTML = `<div class="admin-error"><strong>No se pudieron cargar los indicadores.</strong><p>${escapeHTML(error.message)}</p><button class="admin-action" id="dashboard-retry" type="button">Reintentar</button></div>`;
+    document.getElementById('dashboard-retry')?.addEventListener('click', renderAdmin);
+  }
 }
 
 async function openAdminPage(page) {
   if (page === 'inicio') return renderAdmin();
-  if (page === 'modelos' || page === 'inventario') return renderVehicles(page);
+  if (page === 'modelos') return renderVehicles('modelos');
+  if (page === 'inventario') return renderVehicles('inventario');
+  if (page === 'clientes') return renderClients();
+  if (page === 'asignaciones') return renderAssignments();
   if (page === 'demos') return renderDemos();
   if (page === 'auditoria') return renderAudit();
-  if (['clientes', 'asignaciones', 'mensajes'].includes(page)) return renderUnavailable(page);
 }
 
-async function renderVehicles(page) {
-  const title = page === 'modelos' ? 'Catálogo de modelos' : 'Inventario de vehículos';
+let adminVehiclePage = 'inventario';
 
+async function renderVehicles(page) {
+  adminVehiclePage = page;
+  const title = page === 'modelos' ? 'Catálogo de modelos' : 'Inventario de vehículos';
   adminShell(title, page, `
     <div class="admin-section-heading">
-      <div><h2>${title}</h2><p>Registros almacenados en la base de datos.</p></div>
-      <button class="admin-action" id="new-vehicle" type="button">+ Registrar vehículo</button>
+      <div><h2>${title}</h2><p>${page === 'modelos' ? 'Resumen agrupado de los modelos registrados.' : 'Controla disponibilidad, asignaciones y unidades de exhibición.'}</p></div>
+      ${page === 'inventario' ? '<button class="admin-action" id="new-vehicle" type="button">+ Registrar vehículo</button>' : ''}
     </div>
-    <div id="admin-data" class="admin-data-panel">Cargando vehículos…</div>`);
+    <div id="admin-data" class="admin-data-panel">Cargando inventario…</div>`);
 
   document.getElementById('new-vehicle')?.addEventListener('click', () => showVehicleForm());
   await loadVehicles();
@@ -403,13 +452,32 @@ async function loadVehicles() {
   const target = document.getElementById('admin-data');
   if (!target) return;
 
-  target.textContent = 'Consultando vehículos…';
+  target.textContent = 'Consultando inventario…';
 
   try {
-    const vehicles = await apiFetch('/vehiculos?incluir_detalle=false');
+    const vehicles = await apiFetch('/admin/vehiculos');
 
     if (!Array.isArray(vehicles) || vehicles.length === 0) {
       target.innerHTML = '<p>No hay vehículos registrados. Utiliza “Registrar vehículo” para agregar el primero.</p>';
+      return;
+    }
+
+    if (adminVehiclePage === 'modelos') {
+      const grouped = new Map();
+      vehicles.forEach((vehicle) => {
+        const model = vehicle.modelo || 'Modelo sin especificar';
+        grouped.set(model, [...(grouped.get(model) || []), vehicle]);
+      });
+      target.innerHTML = `
+        <div class="admin-model-grid">
+          ${[...grouped.entries()].map(([model, rows]) => `
+            <article class="admin-model-card">
+              <span class="admin-module-icon">▱</span>
+              <strong>${escapeHTML(model)}</strong>
+              <small>${rows.length} vehículo(s)</small>
+              <p>${rows.map((item) => escapeHTML(item.nombre)).join(' · ')}</p>
+            </article>`).join('')}
+        </div>`;
       return;
     }
 
@@ -417,19 +485,22 @@ async function loadVehicles() {
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr>
-            <th>ID</th><th>Nombre</th><th>Modelo</th><th>Microcontrolador</th><th>Estado</th><th>Acciones</th>
+            <th>ID</th><th>Nombre</th><th>Modelo</th><th>Microcontrolador</th><th>Asignación</th><th>Exhibición</th><th>Estado</th><th>Acciones</th>
           </tr></thead>
           <tbody>
             ${vehicles.map((vehicle) => `
               <tr>
-                <td>${escapeHTML(vehicle.id_vehiculo)}</td>
-                <td>${escapeHTML(vehicle.nombre)}</td>
+                <td>#${escapeHTML(vehicle.id_vehiculo)}</td>
+                <td><strong>${escapeHTML(vehicle.nombre)}</strong></td>
                 <td>${escapeHTML(vehicle.modelo || '—')}</td>
                 <td>${escapeHTML(vehicle.microcontrolador || '—')}</td>
+                <td>${vehicle.asignado ? `Asignado a ${escapeHTML(vehicle.cliente || 'cliente')}` : 'Disponible'}</td>
+                <td><span class="admin-status-pill ${vehicle.es_exhibicion ? 'is-enabled' : ''}">${vehicle.es_exhibicion ? 'Habilitada' : 'Desactivada'}</span></td>
                 <td>${vehicle.activo ? 'Activo' : 'Inactivo'}</td>
-                <td>
-                  <button class="admin-action" data-edit="${Number(vehicle.id_vehiculo)}" type="button">Editar</button>
-                  <button class="admin-danger" data-delete="${Number(vehicle.id_vehiculo)}" type="button">Eliminar</button>
+                <td class="admin-actions-cell">
+                  ${!vehicle.asignado ? `<button class="admin-action" data-edit="${Number(vehicle.id_vehiculo)}" type="button">Editar</button>
+                  <button class="admin-secondary" data-exhibition="${Number(vehicle.id_vehiculo)}" data-enabled="${vehicle.es_exhibicion ? '1' : '0'}" type="button">${vehicle.es_exhibicion ? 'Quitar DEMO' : 'Habilitar DEMO'}</button>
+                  <button class="admin-danger" data-delete="${Number(vehicle.id_vehiculo)}" type="button">Eliminar</button>` : '<span class="admin-muted">Protegido por asignación</span>'}
                 </td>
               </tr>`).join('')}
           </tbody>
@@ -439,7 +510,25 @@ async function loadVehicles() {
     target.querySelectorAll('[data-edit]').forEach((button) => {
       button.addEventListener('click', () => {
         const vehicle = vehicles.find((item) => Number(item.id_vehiculo) === Number(button.dataset.edit));
-        if (vehicle) showVehicleForm(vehicle);
+        if (vehicle && !vehicle.asignado) showVehicleForm(vehicle);
+      });
+    });
+
+    target.querySelectorAll('[data-exhibition]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = Number(button.dataset.exhibition);
+        const enabled = button.dataset.enabled !== '1';
+        button.disabled = true;
+        try {
+          await apiFetch(`/admin/vehiculos/${id}/exhibicion`, {
+            method: 'POST',
+            body: { es_exhibicion: enabled },
+          });
+          await loadVehicles();
+        } catch (error) {
+          alert(error.message);
+          button.disabled = false;
+        }
       });
     });
 
@@ -604,22 +693,197 @@ async function renderAudit() {
   }
 }
 
-function renderUnavailable(page) {
-  const info = {
-    clientes: ['Gestión de clientes', 'El backend todavía no cuenta con endpoints CRUD de clientes.'],
-    asignaciones: ['Asignaciones', 'El backend todavía no cuenta con endpoints para asignar vehículos a clientes.'],
-    mensajes: ['Centro de mensajes', 'El backend todavía no cuenta con almacenamiento ni endpoints de mensajería.'],
-  }[page];
+async function renderClients() {
+  adminShell('Clientes', 'clientes', `
+    <div class="admin-section-heading">
+      <div><h2>Directorio de clientes</h2><p>Crea cuentas con perfil Usuario. La contraseña inicial la define el administrador y debe compartirse de forma segura.</p></div>
+      <button class="admin-action" id="new-client" type="button">+ Nuevo cliente</button>
+    </div>
+    <div id="admin-data" class="admin-data-panel">Cargando clientes…</div>`);
+  document.getElementById('new-client')?.addEventListener('click', showCustomerForm);
+  await loadClients();
+}
 
-  if (!info) return;
+async function loadClients() {
+  const target = document.getElementById('admin-data');
+  if (!target) return;
+  target.textContent = 'Consultando clientes…';
+  try {
+    const clients = await apiFetch('/admin/clientes');
+    if (!Array.isArray(clients) || !clients.length) {
+      target.innerHTML = '<p>Aún no hay clientes registrados. Crea el primer cliente para poder asignarle un vehículo.</p>';
+      return;
+    }
+    target.innerHTML = `
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>Cliente</th><th>Usuario</th><th>Correo</th><th>Vehículos</th><th>Estado</th></tr></thead>
+          <tbody>${clients.map((client) => `
+            <tr>
+              <td>#${Number(client.id_usuario)}</td>
+              <td><strong>${escapeHTML(client.nombre)}</strong></td>
+              <td>${escapeHTML(client.username || '—')}</td>
+              <td>${escapeHTML(client.email || '—')}</td>
+              <td>${Number(client.vehiculos_asignados || 0)}</td>
+              <td><span class="admin-status-pill ${client.activo ? 'is-enabled' : ''}">${client.activo ? 'Activo' : 'Inactivo'}</span></td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+  } catch (error) {
+    target.innerHTML = `<div class="admin-error"><strong>No se pudieron consultar los clientes.</strong><p>${escapeHTML(error.message)}</p></div>`;
+  }
+}
 
-  adminShell(info[0], page, `
-    <div class="admin-empty-state">
-      <div class="admin-empty-icon">${page === 'mensajes' ? '✉' : '◈'}</div>
-      <h2>${info[0]}</h2>
-      <p>${info[1]}</p>
-      <p class="admin-muted">No se muestran datos ficticios. Este módulo se habilitará cuando se implemente su API y su tabla correspondiente.</p>
-    </div>`);
+function showCustomerForm() {
+  const target = document.getElementById('admin-data');
+  if (!target) return;
+  target.innerHTML = `
+    <form id="customer-form" class="admin-form admin-form-wide">
+      <div><p class="admin-eyebrow">NUEVA CUENTA</p><h3>Registrar cliente</h3><p class="admin-muted">Se creará con el perfil <strong>user</strong>. Después podrás asignarle uno o más vehículos.</p></div>
+      <div class="admin-form-grid">
+        <label>Nombre completo<input name="nombre" required minlength="2" maxlength="120" autocomplete="name"></label>
+        <label>Nombre de usuario<input name="username" required minlength="3" maxlength="80" pattern="[A-Za-z0-9_.-]+" autocomplete="username"></label>
+        <label>Correo electrónico<input name="email" type="email" required maxlength="254" autocomplete="email"></label>
+        <label>Contraseña inicial<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"><small>Mínimo 12 caracteres, con mayúsculas, minúsculas y números.</small></label>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-action" type="submit">Crear cuenta de cliente</button>
+        <button class="admin-secondary" id="cancel-client" type="button">Cancelar</button>
+      </div>
+      <p id="customer-form-message" class="admin-form-message" role="status"></p>
+    </form>`;
+  document.getElementById('cancel-client')?.addEventListener('click', loadClients);
+  document.getElementById('customer-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('[type="submit"]');
+    const message = document.getElementById('customer-form-message');
+    const values = new FormData(form);
+    const body = {
+      nombre: String(values.get('nombre') || '').trim(),
+      username: String(values.get('username') || '').trim(),
+      email: String(values.get('email') || '').trim(),
+      password: String(values.get('password') || ''),
+    };
+    button.disabled = true;
+    message.textContent = 'Creando cuenta…';
+    try {
+      const result = await apiFetch('/admin/clientes', { method: 'POST', body });
+      await loadClients();
+      const targetNow = document.getElementById('admin-data');
+      if (targetNow) {
+        const notice = document.createElement('p');
+        notice.className = 'admin-success-note';
+        notice.textContent = `Cliente creado correctamente. ID ${result.id_usuario}. La contraseña no se volverá a mostrar.`;
+        targetNow.prepend(notice);
+      }
+    } catch (error) {
+      message.textContent = error.message;
+      button.disabled = false;
+    }
+  });
+}
+
+async function renderAssignments() {
+  adminShell('Asignaciones', 'asignaciones', `
+    <div class="admin-section-heading">
+      <div><h2>Asignación de vehículos</h2><p>Vincula una unidad disponible con una cuenta de cliente. Cada vehículo solo puede tener una asignación activa.</p></div>
+    </div>
+    <div id="assignment-form-host"></div>
+    <div id="admin-data" class="admin-data-panel">Cargando asignaciones…</div>`);
+  await loadAssignments();
+}
+
+async function loadAssignments() {
+  const target = document.getElementById('admin-data');
+  const formHost = document.getElementById('assignment-form-host');
+  if (!target || !formHost) return;
+  target.textContent = 'Consultando asignaciones…';
+  formHost.textContent = 'Preparando formulario…';
+  try {
+    const [assignments, clients, inventory] = await Promise.all([
+      apiFetch('/admin/asignaciones'),
+      apiFetch('/admin/clientes'),
+      apiFetch('/admin/vehiculos'),
+    ]);
+    const availableVehicles = inventory.filter((vehicle) => vehicle.activo && !vehicle.asignado);
+    const activeClients = clients.filter((client) => client.activo);
+    formHost.innerHTML = `
+      <form id="assignment-form" class="admin-assignment-form">
+        <label>Cliente<select name="id_usuario" required ${activeClients.length ? '' : 'disabled'}>
+          <option value="">Selecciona un cliente</option>
+          ${activeClients.map((client) => `<option value="${Number(client.id_usuario)}">${escapeHTML(client.nombre)} · ${escapeHTML(client.email)}</option>`).join('')}
+        </select></label>
+        <label>Vehículo disponible<select name="id_vehiculo" required ${availableVehicles.length ? '' : 'disabled'}>
+          <option value="">Selecciona un vehículo</option>
+          ${availableVehicles.map((vehicle) => `<option value="${Number(vehicle.id_vehiculo)}">${escapeHTML(vehicle.nombre)} · #${Number(vehicle.id_vehiculo)}</option>`).join('')}
+        </select></label>
+        <button class="admin-action" type="submit" ${activeClients.length && availableVehicles.length ? '' : 'disabled'}>Asignar vehículo</button>
+      </form>
+      ${!activeClients.length ? '<p class="admin-muted">Primero registra un cliente activo.</p>' : ''}
+      ${!availableVehicles.length ? '<p class="admin-muted">No hay vehículos activos sin asignar.</p>' : ''}`;
+    document.getElementById('assignment-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('[type="submit"]');
+      const values = new FormData(form);
+      button.disabled = true;
+      try {
+        await apiFetch('/admin/asignaciones', {
+          method: 'POST',
+          body: {
+            id_usuario: Number(values.get('id_usuario')),
+            id_vehiculo: Number(values.get('id_vehiculo')),
+          },
+        });
+        await loadAssignments();
+      } catch (error) {
+        alert(error.message);
+        button.disabled = false;
+      }
+    });
+
+    if (!Array.isArray(assignments) || !assignments.length) {
+      target.innerHTML = '<p>No hay asignaciones registradas todavía.</p>';
+      return;
+    }
+    target.innerHTML = `
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>Cliente</th><th>Correo</th><th>Vehículo</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr></thead>
+          <tbody>${assignments.map((item) => {
+            const active = item.estado === 'activa' && !item.fecha_revocacion;
+            const date = item.fecha_asignacion ? new Date(item.fecha_asignacion).toLocaleDateString('es-MX') : '—';
+            return `<tr>
+              <td>#${Number(item.id_asignacion)}</td>
+              <td><strong>${escapeHTML(item.cliente || '—')}</strong></td>
+              <td>${escapeHTML(item.email || '—')}</td>
+              <td>${escapeHTML(item.vehiculo || '—')} · #${Number(item.id_vehiculo)}</td>
+              <td>${escapeHTML(date)}</td>
+              <td><span class="admin-status-pill ${active ? 'is-enabled' : ''}">${active ? 'Activa' : 'Revocada'}</span></td>
+              <td>${active ? `<button class="admin-danger" data-revoke="${Number(item.id_asignacion)}" type="button">Revocar</button>` : '—'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+    target.querySelectorAll('[data-revoke]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = Number(button.dataset.revoke);
+        if (!confirm(`¿Revocar la asignación ${id}? El cliente perderá acceso al vehículo.`)) return;
+        button.disabled = true;
+        try {
+          await apiFetch(`/admin/asignaciones/${id}/revocar`, { method: 'POST', body: {} });
+          await loadAssignments();
+        } catch (error) {
+          alert(error.message);
+          button.disabled = false;
+        }
+      });
+    });
+  } catch (error) {
+    formHost.innerHTML = `<div class="admin-error">${escapeHTML(error.message)}</div>`;
+    target.innerHTML = `<div class="admin-error"><strong>No se pudieron consultar las asignaciones.</strong><p>${escapeHTML(error.message)}</p></div>`;
+  }
 }
 
 function renderHeader(title, description) {
@@ -701,16 +965,67 @@ function expireGuestSession() {
   renderLogin('La sesión temporal de invitado terminó. Inicia sesión nuevamente para continuar.');
 }
 
-async function openUserApplication() {
-  authRoot.hidden = true;
-  if (appRoot) appRoot.hidden = false;
+function renderUserAccessNotice(message, title = 'Tu espacio de usuario') {
+  if (appRoot) appRoot.hidden = true;
+  authRoot.hidden = false;
+  authRoot.innerHTML = `
+    <section class="user-access-card">
+      <div class="auth-brand">
+        <span class="auth-symbol">◈</span>
+        <div><p>YOLO · INTERNET OF THINGS</p><h1>CONTROL <span>IoT</span></h1></div>
+      </div>
+      <p class="admin-eyebrow">PERFIL USUARIO</p>
+      <h2>${escapeHTML(title)}</h2>
+      <p>${escapeHTML(message)}</p>
+      <div class="user-access-details"><strong>${escapeHTML(currentUser?.nombre || currentUser?.email || 'Usuario')}</strong><span>${escapeHTML(currentUser?.email || '')}</span></div>
+      <button id="logout-button" class="auth-secondary" type="button">Cerrar sesión</button>
+    </section>`;
+  bindLogout();
+}
 
+async function openUserApplication() {
   try {
+    const vehicles = await apiFetch('/auth/me/vehiculos');
+    if (!Array.isArray(vehicles) || vehicles.length === 0) {
+      renderUserAccessNotice(
+        'Tu cuenta está activa, pero todavía no tiene un vehículo asignado. Solicita al administrador que realice la asignación.',
+        'Aún no tienes un vehículo asignado'
+      );
+      return;
+    }
+
+    window.__CONTROL_IOT_ALLOWED_VEHICLES__ = vehicles;
+    window.__CONTROL_IOT_VEHICLE_ID__ = Number(vehicles[0].id_vehiculo);
+
+    const selector = document.getElementById('vehicle-id');
+    if (selector) {
+      selector.innerHTML = vehicles.map((vehicle) => `
+        <option value="${Number(vehicle.id_vehiculo)}">
+          ${escapeHTML(vehicle.nombre || `Vehículo ${vehicle.id_vehiculo}`)} · #${Number(vehicle.id_vehiculo)}
+        </option>`).join('');
+      selector.value = String(window.__CONTROL_IOT_VEHICLE_ID__);
+    }
+
+    if (appRoot) {
+      let sessionBar = appRoot.querySelector('.user-session-bar');
+      if (!sessionBar) {
+        sessionBar = document.createElement('div');
+        sessionBar.className = 'user-session-bar';
+        appRoot.prepend(sessionBar);
+      }
+      sessionBar.innerHTML = `
+        <div><span class="user-session-mark">◈</span><span><strong>${escapeHTML(currentUser?.nombre || 'Usuario')}</strong><small>PERFIL USUARIO · CONTROL DE VEHÍCULO ASIGNADO</small></span></div>
+        <button id="user-logout-button" type="button">Cerrar sesión <span>↗</span></button>`;
+      sessionBar.querySelector('#user-logout-button')?.addEventListener('click', logout);
+      appRoot.hidden = false;
+    }
+    authRoot.hidden = true;
     await import('./app.js');
   } catch (error) {
-    if (appRoot) appRoot.hidden = true;
-    authRoot.hidden = false;
-    renderLogin(`No se pudo iniciar la aplicación: ${error.message}`);
+    renderUserAccessNotice(
+      `No se pudo consultar tu vehículo asignado. ${error.message}`,
+      'No se pudo cargar tu espacio'
+    );
   }
 }
 
@@ -720,6 +1035,8 @@ function bindLogout() {
 
 async function logout() {
   stopSessionTimers();
+  try { window.__CONTROL_IOT_SHUTDOWN__?.(); } catch { /* cierre local seguro */ }
+  window.__CONTROL_IOT_SHUTDOWN__ = undefined;
   guestExperience?.destroy();
   guestExperience = null;
 
@@ -734,4 +1051,38 @@ async function logout() {
   renderLogin('Sesión cerrada.');
 }
 
-renderLogin();
+async function restoreSession() {
+  renderLogin('Comprobando sesión activa…');
+  try {
+    const csrfResponse = await fetch(`${APP_CONFIG.API_BASE_URL}/auth/csrf`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      mode: 'cors',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    const csrfData = await csrfResponse.json().catch(() => ({}));
+    if (!csrfResponse.ok || !csrfData.csrf_token) {
+      throw new Error('No hay una sesión renovable.');
+    }
+
+    csrfToken = csrfData.csrf_token;
+    const tokens = await postAuth('refresh', {});
+    if (!tokens.access_token) throw new Error('La sesión no pudo renovarse.');
+
+    currentAccessToken = tokens.access_token;
+    setAccessToken(tokens.access_token);
+    const user = await apiFetch('/auth/me');
+    await openSession({
+      usuario: user,
+      access_token: tokens.access_token,
+      expires_in: tokens.expires_in,
+      csrf_token: tokens.csrf_token,
+    });
+  } catch {
+    clearLocalSession();
+    renderLogin();
+  }
+}
+
+restoreSession();

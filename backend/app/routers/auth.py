@@ -1,4 +1,3 @@
-
 """Autenticación FastAPI: registro, login, refresh y logout."""
 
 import secrets
@@ -33,6 +32,9 @@ def _service(db=Depends(get_db)):
 
 def _set_auth_cookies(response: Response, tokens: dict):
     settings = get_settings()
+    response.headers["Cache-Control"] = "no-store"
+    if not tokens.get("refresh_token"):
+        return
 
     max_age = settings.auth_refresh_ttl_days * 86400
 

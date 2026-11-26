@@ -13,7 +13,7 @@ from app.core.dependencies import get_db
 from app.core.exceptions import AppError
 from app.core.stored_procedures import StoredProcedureExecutor
 from app.models.common import ErrorValidacionResponse
-from app.routers import auth, comandos, demos, estado, historial, vehiculos
+from app.routers import admin, auth, comandos, demos, estado, historial, invitado, vehiculos
 from app.services.demo_runner import DemoRunner
 from app.websocket import router as websocket_router
 from app.websocket.websocket_manager import WebSocketManager
@@ -51,9 +51,9 @@ app = FastAPI(
     description=(
         "Control de vehículos IoT. Datos en Amazon RDS (MySQL) mediante **Stored Procedures**; "
         "eventos en tiempo real por WebSocket en `/ws/vehiculos/{id_vehiculo}`.\n\n"
-        "M001 incorpora autenticación JWT en `/auth`. REST y WSS validan identidad y asignación "
-        "activa por vehículo. Las sesiones temporales de invitados y el permiso explícito de "
-        "soporte administrativo siguen pendientes."
+        "La plataforma utiliza perfiles admin, user y guest. El administrador gestiona inventario, "
+        "clientes y asignaciones; el comprador controla únicamente sus unidades asignadas; el invitado "
+        "consulta vehículos de exhibición y ejecuta DEMOs temporales."
     ),
     version="1.3.0",
     lifespan=lifespan,
@@ -64,6 +64,9 @@ app = FastAPI(
         {"name": "Estado", "description": "Último estado y movimiento individual (estado + historial)"},
         {"name": "Historial", "description": "Últimos movimientos individuales (máx. 10)"},
         {"name": "DEMO", "description": "Secuencias de N movimientos: administración, ejecución y cancelación"},
+        {"name": "Administración", "description": "Dashboard, clientes, inventario y asignaciones"},
+        {"name": "Invitado", "description": "Catálogo de exhibición y DEMOs temporales"},
+        {"name": "Autenticación", "description": "Inicio de sesión, roles y sesiones"},
         {"name": "Sistema", "description": "Salud del servicio"},
     ],
 )
@@ -77,6 +80,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(invitado.router)
 app.include_router(vehiculos.router)
 app.include_router(comandos.router)
 app.include_router(estado.router)

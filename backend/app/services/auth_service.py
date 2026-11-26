@@ -20,20 +20,31 @@ class AuthService:
             )
 
     def _issue(self, user, user_agent: str | None):
-        access_ttl = self.settings.auth_access_ttl_minutes * 60
+        is_guest = "guest" in set(user.get("roles") or ())
+        access_ttl = (
+            self.settings.auth_guest_ttl_minutes
+            if is_guest else self.settings.auth_access_ttl_minutes
+        ) * 60
         access = create_access_token(
             user_id=user["id_usuario"], email=user["email"], roles=user["roles"],
             secret=self.settings.auth_secret_key.get_secret_value(), ttl_seconds=access_ttl,
         )
-        refresh = secrets.token_urlsafe(48)
         csrf = secrets.token_urlsafe(32)
-        expires = datetime.now(timezone.utc) + timedelta(days=self.settings.auth_refresh_ttl_days)
-        self.repo.create_refresh_session(
-            session_id=str(uuid.uuid4()), user_id=user["id_usuario"],
-            token_hash=hash_refresh_token(refresh), expires_at=expires, user_agent=user_agent,
-        )
-        return {"access_token": access, "expires_in": access_ttl, "refresh_token": refresh,
-                "csrf_token": csrf}
+        tokens = {
+            "access_token": access,
+            "expires_in": access_ttl,
+            "refresh_token": None,
+            "csrf_token": csrf,
+        }
+        if not is_guest:
+            refresh = secrets.token_urlsafe(48)
+            expires = datetime.now(timezone.utc) + timedelta(days=self.settings.auth_refresh_ttl_days)
+            self.repo.create_refresh_session(
+                session_id=str(uuid.uuid4()), user_id=user["id_usuario"],
+                token_hash=hash_refresh_token(refresh), expires_at=expires, user_agent=user_agent,
+            )
+            tokens["refresh_token"] = refresh
+        return tokens
 
     def register_guest(self, datos, user_agent: str | None):
         if self.repo.get_by_email(str(datos.email)):
@@ -62,6 +73,9 @@ class AuthService:
         user = self.repo.find_refresh_session(old_hash)
         if not user:
             raise UnauthorizedError("Sesión inválida, expirada o revocada")
+        if "guest" in set(user.get("roles") or ()):
+            self.repo.revoke_refresh_session(old_hash)
+            raise UnauthorizedError("La sesión de invitado es temporal y no se puede renovar")
         access_ttl = self.settings.auth_access_ttl_minutes * 60
         access = create_access_token(
             user_id=user["id_usuario"], email=user["email"], roles=user["roles"],
@@ -82,3 +96,4 @@ class AuthService:
     def logout(self, refresh_token: str | None):
         if refresh_token:
             self.repo.revoke_refresh_session(hash_refresh_token(refresh_token))
+
