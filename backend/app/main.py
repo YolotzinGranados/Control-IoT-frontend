@@ -71,14 +71,6 @@ app = FastAPI(
     ],
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=list(FRONTEND_ALLOWED_ORIGINS),
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
-    allow_credentials=True,
-)
-
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(invitado.router)
@@ -119,9 +111,24 @@ async def unhandled_error_handler(_: Request, exc: Exception):
         content={"error": {"codigo": "ERROR_INTERNO", "mensaje": "Error interno del servidor"}},
     )
 
-
 @app.get("/health", tags=["Sistema"], summary="Verifica API y conexión a RDS",
          responses={503: {"description": "Base de datos no disponible"}})
 def health(db: Database = Depends(get_db)):
     db.ping()
     return {"estado": "ok", "base_datos": "conectada"}
+
+# ==========================================================
+# CORS GLOBAL — CONTROL IoT
+# Envuelve toda la aplicación, incluidas las respuestas 500.
+# ==========================================================
+
+app = CORSMiddleware(
+    app=app,
+    allow_origins=[
+        "https://yolotzingranados.github.io",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    max_age=600,
+)
