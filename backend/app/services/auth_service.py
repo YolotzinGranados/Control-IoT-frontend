@@ -96,4 +96,3 @@ class AuthService:
     def logout(self, refresh_token: str | None):
         if refresh_token:
             self.repo.revoke_refresh_session(hash_refresh_token(refresh_token))
-

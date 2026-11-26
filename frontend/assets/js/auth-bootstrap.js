@@ -742,7 +742,7 @@ function showCustomerForm() {
       <div><p class="admin-eyebrow">NUEVA CUENTA</p><h3>Registrar cliente</h3><p class="admin-muted">Se creará con el perfil <strong>user</strong>. Después podrás asignarle uno o más vehículos.</p></div>
       <div class="admin-form-grid">
         <label>Nombre completo<input name="nombre" required minlength="2" maxlength="120" autocomplete="name"></label>
-        <label>Nombre de usuario<input name="username" required minlength="3" maxlength="80" pattern="[A-Za-z0-9_.-]+" autocomplete="username"></label>
+        <label>Nombre de usuario<input name="username" requiredminlength="3" maxlength="80" pattern="[A-Za-z0-9_.\-]+"autocomplete="username"></label>
         <label>Correo electrónico<input name="email" type="email" required maxlength="254" autocomplete="email"></label>
         <label>Contraseña inicial<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"><small>Mínimo 12 caracteres, con mayúsculas, minúsculas y números.</small></label>
       </div>
