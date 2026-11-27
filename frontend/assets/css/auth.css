@@ -2394,3 +2394,31 @@
   .admin-demo-checklist-heading { flex-direction: column; }
   .admin-demo-checklist { grid-template-columns: 1fr; }
 }
+.admin-guest-enabled-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.admin-guest-enabled-list .admin-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px;
+  border: 1px solid #293b55;
+  border-radius: 12px;
+  background: #14243a;
+}
+
+.admin-guest-enabled-list .admin-list-item > div {
+  display: grid;
+  gap: 7px;
+}
+
+@media (max-width: 600px) {
+  .admin-guest-enabled-list .admin-list-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -827,211 +827,642 @@ function showCustomerForm() {
   });
 }
 
+async function inspectGuestVehicle(vehicle) {
+  const id = Number(vehicle.id_vehiculo);
+
+  try {
+    const demos = await apiFetch(`/vehiculos/${id}/demos`);
+
+    const activeDemos = (Array.isArray(demos) ? demos : [])
+      .filter(demo => demo.activo === true || Number(demo.activo) === 1);
+
+    const results = await Promise.all(
+      activeDemos.map(async (demo) => {
+        try {
+          const movements = await apiFetch(
+            `/vehiculos/${id}/demos/${Number(demo.id_demo)}/movimientos`
+          );
+
+          return Array.isArray(movements) && movements.length > 0
+            ? demo
+            : null;
+
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    const readyDemos = results.filter(Boolean);
+
+    return {
+      ...vehicle,
+      guestReady: readyDemos.length > 0,
+      guestDemoCount: readyDemos.length
+    };
+
+  } catch (error) {
+    return {
+      ...vehicle,
+      guestReady: false,
+      guestDemoCount: 0,
+      guestCheckError: error.message
+    };
+  }
+}
+
+
 async function renderAssignments() {
+
   adminShell('Asignaciones', 'asignaciones', `
+
     <div class="admin-section-heading">
-      <div><h2>Asignación de vehículos</h2><p>Vincula una unidad disponible con una cuenta de cliente. Cada vehículo solo puede tener una asignación activa.</p></div>
+      <div>
+        <h2>Asignación de vehículos</h2>
+        <p>
+          Administra las unidades de los clientes y los vehículos
+          disponibles para el perfil invitado.
+        </p>
+      </div>
     </div>
+
+    <section class="admin-dashboard-panel">
+
+      <div class="admin-panel-heading">
+        <div>
+          <p class="admin-eyebrow">ACCESO DE INVITADOS</p>
+          <h3>Vehículo de prueba</h3>
+        </div>
+      </div>
+
+      <p class="admin-muted">
+        Selecciona una unidad activa, sin asignación a clientes
+        y con al menos una DEMO activa que tenga movimientos.
+      </p>
+
+      <div id="guest-vehicle-host">
+        Consultando vehículos disponibles...
+      </div>
+
+    </section>
+
+    <div class="admin-section-heading">
+      <div>
+        <h2>Asignación a clientes</h2>
+        <p>
+          Cada vehículo solo puede tener una asignación activa.
+        </p>
+      </div>
+    </div>
+
     <div id="assignment-form-host"></div>
-    <div id="admin-data" class="admin-data-panel">Cargando asignaciones…</div>`);
+
+    <div id="admin-data" class="admin-data-panel">
+      Cargando asignaciones...
+    </div>
+
+  `);
+
   await loadAssignments();
 }
 
+
 async function loadAssignments() {
+
   const target = document.getElementById('admin-data');
   const formHost = document.getElementById('assignment-form-host');
-  if (!target || !formHost) return;
-  target.textContent = 'Consultando asignaciones…';
-  formHost.textContent = 'Preparando formularios…';
+  const guestHost = document.getElementById('guest-vehicle-host');
+
+  if (!target || !formHost || !guestHost) return;
+
+  target.textContent = 'Consultando asignaciones...';
+  formHost.textContent = 'Preparando formulario...';
+  guestHost.textContent = 'Consultando vehículos...';
 
   try {
+
     const [assignments, clients, inventory] = await Promise.all([
       apiFetch('/admin/asignaciones'),
       apiFetch('/admin/clientes'),
-      apiFetch('/admin/vehiculos'),
+      apiFetch('/admin/vehiculos')
     ]);
 
-    const activeAssignments = assignments.filter(item =>
-      item.estado === 'activa' && !item.fecha_revocacion
-    );
-    const activeClients = clients.filter(client => client.activo);
+    // ------------------------------------------------
+    // 1. VEHÍCULOS DISPONIBLES PARA CLIENTES
+    // ------------------------------------------------
+
     const availableVehicles = inventory.filter(vehicle =>
-      vehicle.activo && !vehicle.asignado && !vehicle.es_exhibicion
+      vehicle.activo &&
+      !vehicle.asignado &&
+      !vehicle.es_exhibicion
     );
+
+    const activeClients = clients.filter(client => client.activo);
+
+    // ------------------------------------------------
+    // 2. REVISAR VEHÍCULOS PARA INVITADO
+    // ------------------------------------------------
+
+    const unassignedActive = inventory.filter(vehicle =>
+      vehicle.activo && !vehicle.asignado
+    );
+
+    const inspectedVehicles = await Promise.all(
+      unassignedActive.map(inspectGuestVehicle)
+    );
+
+    const guestVehicles = inspectedVehicles.filter(
+      vehicle => vehicle.es_exhibicion
+    );
+
+    const guestCandidates = inspectedVehicles.filter(
+      vehicle => !vehicle.es_exhibicion && vehicle.guestReady
+    );
+
+    const blockedVehicles = inspectedVehicles.filter(
+      vehicle => !vehicle.es_exhibicion && !vehicle.guestReady
+    );
+
+    // La unidad P02 (#8) queda preseleccionada si cumple los requisitos.
+    const preferredVehicle = guestCandidates.find(
+      vehicle => Number(vehicle.id_vehiculo) === 8
+    );
+
+    // ------------------------------------------------
+    // 3. FORMULARIO PARA INVITADO
+    // ------------------------------------------------
+
+    guestHost.innerHTML = `
+
+      <form id="guest-vehicle-form" class="admin-assignment-form">
+
+        <label>
+          Vehículo de prueba
+
+          <select
+            name="id_vehiculo"
+            required
+            ${guestCandidates.length ? '' : 'disabled'}
+          >
+
+            <option value="">
+              Selecciona una unidad
+            </option>
+
+            ${guestCandidates.map(vehicle => `
+
+              <option
+                value="${Number(vehicle.id_vehiculo)}"
+                ${preferredVehicle &&
+                  Number(preferredVehicle.id_vehiculo) === Number(vehicle.id_vehiculo)
+                  ? 'selected' : ''}
+              >
+
+                ${escapeHTML(vehicle.nombre)}
+                · #${Number(vehicle.id_vehiculo)}
+                · ${vehicle.guestDemoCount} DEMO(s)
+
+              </option>
+
+            `).join('')}
+
+          </select>
+
+        </label>
+
+        <button
+          class="admin-action"
+          type="submit"
+          ${guestCandidates.length ? '' : 'disabled'}
+        >
+          Habilitar para invitado
+        </button>
+
+      </form>
+
+      ${!guestCandidates.length ? `
+
+        <p class="admin-muted">
+          No hay vehículos disponibles con DEMOs listas.
+          Primero registra una DEMO activa con movimientos.
+        </p>
+
+      ` : ''}
+
+      ${blockedVehicles.length ? `
+
+        <p class="admin-muted">
+          ${blockedVehicles.length} vehículo(s) no cumplen
+          todavía los requisitos de exhibición.
+        </p>
+
+      ` : ''}
+
+      <h4>Vehículos habilitados para invitado</h4>
+
+      <div class="admin-guest-enabled-list">
+
+        ${guestVehicles.length ? guestVehicles.map(vehicle => `
+
+          <div class="admin-list-item">
+
+            <div>
+
+              <strong>
+                ${escapeHTML(vehicle.nombre)}
+                · #${Number(vehicle.id_vehiculo)}
+              </strong>
+
+              <small>
+                ${vehicle.guestReady
+                  ? `${vehicle.guestDemoCount} DEMO(s) listas`
+                  : 'Atención: no tiene DEMOs con movimientos disponibles'}
+              </small>
+
+              <span class="admin-status-pill is-enabled">
+                Habilitado
+              </span>
+
+            </div>
+
+            <button
+              class="admin-danger"
+              type="button"
+              data-guest-disable="${Number(vehicle.id_vehiculo)}"
+            >
+              Retirar acceso
+            </button>
+
+          </div>
+
+        `).join('') : `
+
+          <p class="admin-muted">
+            Todavía no hay vehículos habilitados para invitados.
+          </p>
+
+        `}
+
+      </div>
+
+    `;
+
+    // ------------------------------------------------
+    // 4. HABILITAR VEHÍCULO PARA INVITADO
+    // ------------------------------------------------
+
+    document.getElementById('guest-vehicle-form')
+      ?.addEventListener('submit', async event => {
+
+        event.preventDefault();
+
+        const form = event.currentTarget;
+        const button = form.querySelector('[type="submit"]');
+        const id = Number(new FormData(form).get('id_vehiculo'));
+
+        if (!id) return;
+
+        if (!confirm(
+          `¿Habilitar el vehículo ${id} para el perfil Invitado?`
+        )) return;
+
+        button.disabled = true;
+
+        try {
+
+          await apiFetch(
+            `/admin/vehiculos/${id}/exhibicion`,
+            {
+              method: 'POST',
+              body: {
+                es_exhibicion: true
+              }
+            }
+          );
+
+          alert('Vehículo habilitado correctamente para Invitado.');
+
+          await loadAssignments();
+
+        } catch (error) {
+
+          alert(error.message);
+          button.disabled = false;
+
+        }
+
+      });
+
+    // ------------------------------------------------
+    // 5. RETIRAR VEHÍCULO DEL PERFIL INVITADO
+    // ------------------------------------------------
+
+    guestHost.querySelectorAll('[data-guest-disable]')
+      .forEach(button => {
+
+        button.addEventListener('click', async () => {
+
+          const id = Number(button.dataset.guestDisable);
+
+          if (!confirm(
+            `¿Retirar el vehículo ${id} del catálogo de invitados?`
+          )) return;
+
+          button.disabled = true;
+
+          try {
+
+            await apiFetch(
+              `/admin/vehiculos/${id}/exhibicion`,
+              {
+                method: 'POST',
+                body: {
+                  es_exhibicion: false
+                }
+              }
+            );
+
+            alert('Acceso de invitado retirado correctamente.');
+
+            await loadAssignments();
+
+          } catch (error) {
+
+            alert(error.message);
+            button.disabled = false;
+
+          }
+
+        });
+
+      });
+
+    // ------------------------------------------------
+    // 6. CONSERVAR ASIGNACIONES DE CLIENTES
+    // ------------------------------------------------
 
     formHost.innerHTML = `
-      <section class="admin-form admin-form-wide">
-        <div><p class="admin-eyebrow">ASIGNACIÓN DE UNIDADES</p><h3>Asignar vehículo a cliente</h3>
-          <p class="admin-muted">Cada vehículo puede tener un solo cliente activo. Un cliente puede tener varios vehículos.</p></div>
-        <form id="assignment-form" class="admin-assignment-form">
-          <label>Cliente<select name="id_usuario" required ${activeClients.length ? '' : 'disabled'}>
+
+      <form id="assignment-form" class="admin-assignment-form">
+
+        <label>
+          Cliente
+
+          <select
+            name="id_usuario"
+            required
+            ${activeClients.length ? '' : 'disabled'}
+          >
+
             <option value="">Selecciona un cliente</option>
-            ${activeClients.map(client => `<option value="${Number(client.id_usuario)}">${escapeHTML(client.nombre)} · ${escapeHTML(client.email)}</option>`).join('')}
-          </select></label>
-          <label>Vehículo disponible<select name="id_vehiculo" required ${availableVehicles.length ? '' : 'disabled'}>
+
+            ${activeClients.map(client => `
+
+              <option value="${Number(client.id_usuario)}">
+
+                ${escapeHTML(client.nombre)}
+                · ${escapeHTML(client.email)}
+
+              </option>
+
+            `).join('')}
+
+          </select>
+
+        </label>
+
+        <label>
+          Vehículo disponible
+
+          <select
+            name="id_vehiculo"
+            required
+            ${availableVehicles.length ? '' : 'disabled'}
+          >
+
             <option value="">Selecciona un vehículo</option>
-            ${availableVehicles.map(vehicle => `<option value="${Number(vehicle.id_vehiculo)}">${escapeHTML(vehicle.nombre)} · #${Number(vehicle.id_vehiculo)}</option>`).join('')}
-          </select></label>
-          <button class="admin-action" type="submit" ${activeClients.length && availableVehicles.length ? '' : 'disabled'}>Asignar vehículo</button>
-        </form>
-        ${!activeClients.length ? '<p class="admin-muted">Primero registra un cliente activo.</p>' : ''}
-        ${!availableVehicles.length ? '<p class="admin-muted">No hay vehículos disponibles. Los vehículos de exhibición no se pueden asignar a clientes.</p>' : ''}
-      </section>
 
-      <section class="admin-form admin-form-wide" style="margin-top:22px">
-        <div><p class="admin-eyebrow">PERMISOS DE DEMOSTRACIÓN</p><h3>Asignar varias DEMOs a un cliente</h3>
-          <p class="admin-muted">Selecciona un cliente, uno de sus vehículos y marca todas las DEMOs a las que tendrá acceso.</p></div>
-        <form id="demo-assignment-form">
-          <div class="admin-form-grid">
-            <label>Cliente<select id="demo-client" required ${activeClients.length ? '' : 'disabled'}>
-              <option value="">Selecciona un cliente</option>
-              ${activeClients.map(client => `<option value="${Number(client.id_usuario)}">${escapeHTML(client.nombre)} · ${escapeHTML(client.email)}</option>`).join('')}
-            </select></label>
-            <label>Vehículo asignado<select id="demo-vehicle" required disabled><option value="">Primero selecciona un cliente</option></select></label>
-          </div>
-          <div id="demo-assignment-options" class="admin-demo-assignment-options">Selecciona el cliente y el vehículo para cargar sus DEMOs.</div>
-          <div class="admin-form-actions">
-            <button class="admin-action" type="submit" disabled id="save-demo-assignment">Guardar DEMOs seleccionadas</button>
-          </div>
-          <p id="demo-assignment-feedback" class="admin-form-message" role="status" aria-live="polite"></p>
-        </form>
-      </section>`;
+            ${availableVehicles.map(vehicle => `
 
-    document.getElementById('assignment-form')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      const form = event.currentTarget;
-      const button = form.querySelector('[type="submit"]');
-      const values = new FormData(form);
-      button.disabled = true;
-      try {
-        await apiFetch('/admin/asignaciones', {
-          method: 'POST',
-          body: { id_usuario: Number(values.get('id_usuario')), id_vehiculo: Number(values.get('id_vehiculo')) },
-        });
-        await loadAssignments();
-      } catch (error) {
-        alert(error.message);
-        button.disabled = false;
-      }
-    });
+              <option value="${Number(vehicle.id_vehiculo)}">
 
-    const demoClient = document.getElementById('demo-client');
-    const demoVehicle = document.getElementById('demo-vehicle');
-    const demoOptions = document.getElementById('demo-assignment-options');
-    const saveDemoButton = document.getElementById('save-demo-assignment');
-    const demoFeedback = document.getElementById('demo-assignment-feedback');
+                ${escapeHTML(vehicle.nombre)}
+                · #${Number(vehicle.id_vehiculo)}
 
-    async function loadDemoOptions() {
-      const userId = Number(demoClient.value);
-      const vehicleId = Number(demoVehicle.value);
-      if (!userId || !vehicleId) {
-        demoOptions.textContent = 'Selecciona un cliente y uno de sus vehículos asignados.';
-        saveDemoButton.disabled = true;
-        return;
-      }
-      demoOptions.textContent = 'Cargando DEMOs del vehículo…';
-      saveDemoButton.disabled = true;
-      try {
-        const demos = await apiFetch(`/admin/clientes/${userId}/vehiculos/${vehicleId}/demos`);
-        const activeDemos = demos.filter(demo => demo.activo);
-        if (!activeDemos.length) {
-          demoOptions.innerHTML = '<p class="admin-muted">Este vehículo no tiene DEMOs activas. Crea y configura una DEMO primero.</p>';
-          return;
+              </option>
+
+            `).join('')}
+
+          </select>
+
+        </label>
+
+        <button
+          class="admin-action"
+          type="submit"
+          ${activeClients.length && availableVehicles.length ? '' : 'disabled'}
+        >
+          Asignar vehículo
+        </button>
+
+      </form>
+
+      ${!activeClients.length
+        ? '<p class="admin-muted">Primero registra un cliente activo.</p>'
+        : ''}
+
+      ${!availableVehicles.length
+        ? '<p class="admin-muted">No hay vehículos disponibles para clientes.</p>'
+        : ''}
+
+    `;
+
+    document.getElementById('assignment-form')
+      ?.addEventListener('submit', async event => {
+
+        event.preventDefault();
+
+        const form = event.currentTarget;
+        const button = form.querySelector('[type="submit"]');
+        const values = new FormData(form);
+
+        button.disabled = true;
+
+        try {
+
+          await apiFetch('/admin/asignaciones', {
+            method: 'POST',
+            body: {
+              id_usuario: Number(values.get('id_usuario')),
+              id_vehiculo: Number(values.get('id_vehiculo'))
+            }
+          });
+
+          alert('Vehículo asignado correctamente.');
+
+          await loadAssignments();
+
+        } catch (error) {
+
+          alert(error.message);
+          button.disabled = false;
+
         }
-        demoOptions.innerHTML = `
-          <div class="admin-demo-checklist-heading"><strong>DEMO disponibles</strong><span>Marca una o varias</span></div>
-          <div class="admin-demo-checklist">
-            ${activeDemos.map(demo => `
-              <label class="admin-demo-check">
-                <input type="checkbox" name="id_demos" value="${Number(demo.id_demo)}" ${demo.asignada ? 'checked' : ''}>
-                <span><strong>${escapeHTML(demo.nombre)}</strong><small>${escapeHTML(demo.descripcion || `DEMO #${demo.id_demo}`)}</small></span>
-                <em>${demo.asignada ? 'Asignada' : 'Disponible'}</em>
-              </label>`).join('')}
-          </div>`;
-        saveDemoButton.disabled = false;
-      } catch (error) {
-        demoOptions.innerHTML = `<div class="admin-error">${escapeHTML(error.message)}</div>`;
-      }
-    }
 
-    demoClient?.addEventListener('change', () => {
-      const userId = Number(demoClient.value);
-      const vehicles = activeAssignments.filter(item => Number(item.id_usuario) === userId);
-      demoVehicle.innerHTML = vehicles.length
-        ? `<option value="">Selecciona un vehículo</option>${vehicles.map(item => `<option value="${Number(item.id_vehiculo)}">${escapeHTML(item.vehiculo || `Vehículo ${item.id_vehiculo}`)} · #${Number(item.id_vehiculo)}</option>`).join('')}`
-        : '<option value="">Este cliente no tiene vehículos asignados</option>';
-      demoVehicle.disabled = !vehicles.length;
-      demoOptions.textContent = vehicles.length
-        ? 'Selecciona un vehículo para consultar sus DEMOs.'
-        : 'Asigna primero un vehículo a este cliente.';
-      saveDemoButton.disabled = true;
-    });
-    demoVehicle?.addEventListener('change', loadDemoOptions);
+      });
 
-    document.getElementById('demo-assignment-form')?.addEventListener('submit', async event => {
-      event.preventDefault();
-      const userId = Number(demoClient.value);
-      const vehicleId = Number(demoVehicle.value);
-      const ids = [...demoOptions.querySelectorAll('input[name="id_demos"]:checked')].map(input => Number(input.value));
-      if (!userId || !vehicleId) return;
-      saveDemoButton.disabled = true;
-      demoFeedback.textContent = 'Guardando permisos…';
-      try {
-        const result = await apiFetch(`/admin/clientes/${userId}/vehiculos/${vehicleId}/demos`, {
-          method: 'POST', body: { id_demos: ids },
-        });
-        demoFeedback.textContent = `Se guardaron ${Number(result.total_demos_asignadas)} DEMO(s) para este cliente.`;
-        await loadDemoOptions();
-      } catch (error) {
-        demoFeedback.textContent = error.message;
-        saveDemoButton.disabled = false;
-      }
-    });
+    // ------------------------------------------------
+    // 7. TABLA DE ASIGNACIONES
+    // ------------------------------------------------
 
-    if (!activeAssignments.length) {
-      target.innerHTML = '<p>No hay vehículos asignados a clientes. Primero asigna un vehículo para después seleccionar sus DEMOs.</p>';
+    if (!Array.isArray(assignments) || !assignments.length) {
+
+      target.innerHTML = `
+        <p>No hay asignaciones de clientes registradas todavía.</p>
+      `;
+
       return;
     }
 
     target.innerHTML = `
+
       <div class="admin-table-wrap">
+
         <table class="admin-table">
-          <thead><tr><th>ID</th><th>Cliente</th><th>Correo</th><th>Vehículo</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr></thead>
-          <tbody>${assignments.map(item => {
-            const active = item.estado === 'activa' && !item.fecha_revocacion;
-            const date = item.fecha_asignacion ? new Date(item.fecha_asignacion).toLocaleDateString('es-MX') : '—';
-            return `<tr>
-              <td>#${Number(item.id_asignacion)}</td>
-              <td><strong>${escapeHTML(item.cliente || '—')}</strong></td>
-              <td>${escapeHTML(item.email || '—')}</td>
-              <td>${escapeHTML(item.vehiculo || '—')} · #${Number(item.id_vehiculo)}</td>
-              <td>${escapeHTML(date)}</td>
-              <td><span class="admin-status-pill ${active ? 'is-enabled' : ''}">${active ? 'Activa' : 'Revocada'}</span></td>
-              <td>${active ? `<button class="admin-danger" data-revoke="${Number(item.id_asignacion)}" type="button">Revocar</button>` : '—'}</td>
-            </tr>`;
-          }).join('')}</tbody>
+
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Cliente</th>
+              <th>Correo</th>
+              <th>Vehículo</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            ${assignments.map(item => {
+
+              const active =
+                item.estado === 'activa' &&
+                !item.fecha_revocacion;
+
+              const date = item.fecha_asignacion
+                ? new Date(item.fecha_asignacion).toLocaleDateString('es-MX')
+                : '—';
+
+              return `
+
+                <tr>
+
+                  <td>#${Number(item.id_asignacion)}</td>
+
+                  <td>
+                    <strong>${escapeHTML(item.cliente || '—')}</strong>
+                  </td>
+
+                  <td>${escapeHTML(item.email || '—')}</td>
+
+                  <td>
+                    ${escapeHTML(item.vehiculo || '—')}
+                    · #${Number(item.id_vehiculo)}
+                  </td>
+
+                  <td>${escapeHTML(date)}</td>
+
+                  <td>
+                    <span class="admin-status-pill ${active ? 'is-enabled' : ''}">
+                      ${active ? 'Activa' : 'Revocada'}
+                    </span>
+                  </td>
+
+                  <td>
+
+                    ${active ? `
+
+                      <button
+                        class="admin-danger"
+                        data-revoke="${Number(item.id_asignacion)}"
+                        type="button"
+                      >
+                        Revocar
+                      </button>
+
+                    ` : '—'}
+
+                  </td>
+
+                </tr>
+
+              `;
+
+            }).join('')}
+
+          </tbody>
+
         </table>
+
+      </div>
+
+    `;
+
+    target.querySelectorAll('[data-revoke]')
+      .forEach(button => {
+
+        button.addEventListener('click', async () => {
+
+          const id = Number(button.dataset.revoke);
+
+          if (!confirm(
+            `¿Revocar la asignación ${id}?`
+          )) return;
+
+          button.disabled = true;
+
+          try {
+
+            await apiFetch(
+              `/admin/asignaciones/${id}/revocar`,
+              {
+                method: 'POST',
+                body: {}
+              }
+            );
+
+            await loadAssignments();
+
+          } catch (error) {
+
+            alert(error.message);
+            button.disabled = false;
+
+          }
+
+        });
+
+      });
+
+  } catch (error) {
+
+    guestHost.innerHTML =
+      `<div class="admin-error">${escapeHTML(error.message)}</div>`;
+
+    formHost.innerHTML =
+      `<div class="admin-error">${escapeHTML(error.message)}</div>`;
+
+    target.innerHTML =
+      `<div class="admin-error">
+        <strong>No se pudieron consultar las asignaciones.</strong>
+        <p>${escapeHTML(error.message)}</p>
       </div>`;
 
-    target.querySelectorAll('[data-revoke]').forEach(button => {
-      button.addEventListener('click', async () => {
-        const id = Number(button.dataset.revoke);
-        if (!confirm(`¿Revocar la asignación ${id}? También se revocarán las DEMOs que tenía asignadas ese cliente en ese vehículo.`)) return;
-        button.disabled = true;
-        try {
-          await apiFetch(`/admin/asignaciones/${id}/revocar`, { method: 'POST', body: {} });
-          await loadAssignments();
-        } catch (error) {
-          alert(error.message);
-          button.disabled = false;
-        }
-      });
-    });
-  } catch (error) {
-    formHost.innerHTML = `<div class="admin-error">${escapeHTML(error.message)}</div>`;
-    target.innerHTML = `<div class="admin-error"><strong>No se pudieron consultar las asignaciones.</strong><p>${escapeHTML(error.message)}</p></div>`;
   }
+
 }
+
 
 function renderHeader(title, description) {
   return `
