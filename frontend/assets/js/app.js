@@ -725,9 +725,13 @@ function bindVehicleSelection() {
   }
 
   input.value = String(vehicleId);
-  const canChooseVehicle = !allowedVehicles || allowedVehicles.length >= 1;
-  input.disabled = !canChooseVehicle;
-  submit.disabled = !canChooseVehicle;
+  // Con una sola unidad asignada, el selector queda bloqueado,
+  // pero el botón Conectar debe seguir habilitado para configurar el ESP8266.
+  const hasAssignedVehicle = !allowedVehicles || allowedVehicles.length > 0;
+  const canChangeVehicle = !allowedVehicles || allowedVehicles.length > 1;
+
+  input.disabled = !canChangeVehicle;
+  submit.disabled = !hasAssignedVehicle;
 
   $('#vehicle-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -810,8 +814,8 @@ function bindVehicleSelection() {
       setText(feedback, friendlyError(error));
     } finally {
       switchingVehicle = false;
-      input.disabled = !canChooseVehicle;
-      submit.disabled = !canChooseVehicle;
+      input.disabled = !canChangeVehicle;
+      submit.disabled = !hasAssignedVehicle;
 
       updateControlAvailability();
     }
