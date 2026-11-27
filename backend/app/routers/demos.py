@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
-from app.core.dependencies import get_demo_runner, get_demo_service
+from app.core.dependencies import get_demo_runner, get_demo_service, get_ws_manager
 from app.core.exceptions import ConflictError
 from app.core.security import requiere_admin, requiere_control, requiere_vehiculo
 from app.models.common import MensajeOut
@@ -163,7 +163,13 @@ def eliminar_movimiento(id_vehiculo: IdVehiculo, id_demo: IdDemo, id_demo_movimi
 )
 async def iniciar_demo(id_vehiculo: IdVehiculo, id_demo: IdDemo,
                        servicio: DemoService = Depends(get_demo_service),
-                       runner: DemoRunner = Depends(get_demo_runner)):
+                       runner: DemoRunner = Depends(get_demo_runner),
+                       manager=Depends(get_ws_manager)):
+    if not manager.listo_para_vehiculo(id_vehiculo):
+        raise ConflictError(
+            "El ESP8266 todavía no está conectado y configurado para este vehículo. "
+            "Pulsa Conectar y espera la confirmación."
+        )
     preparacion = await run_in_threadpool(servicio.preparar_ejecucion, id_vehiculo, id_demo)
     ejecucion = runner.iniciar(id_vehiculo, preparacion)  # 409 si ya hay una DEMO en este vehículo
     return {

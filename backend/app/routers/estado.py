@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from app.core.dependencies import get_estado_service, get_movimiento_service, get_ws_manager
+from app.core.exceptions import ConflictError
 from app.core.security import requiere_control, requiere_vehiculo
 from app.models.estado import EstadoOut
 from app.models.movimiento import MovimientoEjecutadoOut, MovimientoIn
@@ -55,6 +56,13 @@ async def ejecutar_movimiento(
     servicio: MovimientoService = Depends(get_movimiento_service),
     manager: WebSocketManager = Depends(get_ws_manager),
 ):
+    # La única placa debe haber confirmado por WSS el ID que intenta controlar.
+    if not manager.listo_para_vehiculo(id_vehiculo):
+        raise ConflictError(
+            "El ESP8266 todavía no está conectado y configurado para este vehículo. "
+            "Pulsa Conectar y espera la confirmación."
+        )
+
     # El servicio (bloqueante) corre en un hilo; si lanza una excepción, aquí no se notifica nada.
     resultado = await run_in_threadpool(servicio.ejecutar, id_vehiculo, datos.id_comando, datos.origen)
 

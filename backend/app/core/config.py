@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     auth_guest_ttl_minutes: int = 15
     auth_refresh_ttl_days: int = 14
 
+    # Credencial privada de la única placa ESP8266 conectada por WSS
+    esp8266_ws_token: Optional[SecretStr] = None
+
     # Cookies de sesión
     auth_refresh_cookie_name: str = "iot_refresh"
     auth_csrf_cookie_name: str = "iot_csrf"

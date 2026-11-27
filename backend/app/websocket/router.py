@@ -5,6 +5,8 @@ el cliente envía el JWT como segundo subprotocolo: ["bearer", access_token]. El
 servidor negocia únicamente el subprotocolo "bearer" y nunca devuelve el token.
 """
 import asyncio
+import hmac
+import json
 import logging
 import time
 
@@ -108,6 +110,10 @@ async def websocket_vehiculo(websocket: WebSocket, id_vehiculo: int):
 
         manager.registrar(id_vehiculo, websocket)
         registered = True
+
+        # La conexión del navegador ocurre al pulsar "Conectar". Después de
+        # validar permisos, este ID pasa a ser el vehículo activo de la única placa.
+        await manager.seleccionar_vehiculo(id_vehiculo)
         await websocket.send_json(ev.evento_estado_inicial(estado))
 
         # La sesión WSS no sobrevive a la expiración del access token.
@@ -190,6 +196,78 @@ async def websocket_vehiculo(websocket: WebSocket, id_vehiculo: int):
             manager.desconectar(id_vehiculo, websocket)
 
 
+@router.websocket("/ws/esp8266")
+async def websocket_esp8266(websocket: WebSocket):
+    """Conexión persistente de la única placa. No recibe un ID en la URL.
+
+    La selección del vehículo llega después desde la sesión WSS autorizada del
+    usuario. La placa se autentica con ESP8266_WS_TOKEN, no con MAC ni ID manual.
+    """
+    settings = get_settings()
+    configured = settings.esp8266_ws_token
+    authorization = websocket.headers.get("authorization", "")
+    expected = (
+        f"Bearer {configured.get_secret_value()}"
+        if configured and configured.get_secret_value()
+        else ""
+    )
+
+    if not expected or not hmac.compare_digest(authorization, expected):
+        await websocket.close(code=CODIGO_NO_AUTENTICADO)
+        return
+
+    origin = websocket.headers.get("origin")
+    if origin and origin not in FRONTEND_ALLOWED_ORIGINS:
+        await websocket.close(code=CODIGO_SIN_PERMISO)
+        return
+
+    await websocket.accept()
+    manager = websocket.app.state.ws_manager
+    await manager.registrar_dispositivo(websocket)
+
+    try:
+        while True:
+            texto = await websocket.receive_text()
+            if texto.strip().lower() == "ping":
+                await websocket.send_json({"tipo": "pong"})
+                continue
+
+            try:
+                mensaje = json.loads(texto)
+            except (TypeError, json.JSONDecodeError):
+                logger.warning("ESP8266 envió un mensaje JSON inválido")
+                continue
+
+            if not isinstance(mensaje, dict):
+                continue
+
+            if mensaje.get("tipo") == "vehiculo_configurado":
+                try:
+                    id_recibido = int(mensaje.get("id_vehiculo", 0))
+                except (TypeError, ValueError):
+                    id_recibido = 0
+
+                confirmado = id_recibido > 0 and await manager.confirmar_dispositivo(
+                    id_recibido, websocket
+                )
+                if not confirmado:
+                    id_actual = manager.vehiculo_activo
+                    if id_actual is None:
+                        await websocket.send_json({"tipo": "esperar_seleccion"})
+                    else:
+                        await websocket.send_json({
+                            "tipo": "configuracion_vehiculo",
+                            "id_vehiculo": id_actual,
+                        })
+
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        logger.exception("Error en la conexión WSS de la placa ESP8266")
+    finally:
+        await manager.desconectar_dispositivo(websocket)
+
+
 async def _cerrar_con_error(
     websocket: WebSocket,
     id_vehiculo: int,
@@ -204,3 +282,4 @@ async def _cerrar_con_error(
             await websocket.close(code=codigo)
     except Exception:
         pass  # el socket ya estaba cerrado
+

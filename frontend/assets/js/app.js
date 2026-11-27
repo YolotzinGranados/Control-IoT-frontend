@@ -22,16 +22,18 @@ import { $, setText } from './utils/dom.js';
 import { friendlyError } from './utils/errors.js';
 import { expectArray, validateCommand } from './utils/validation.js';
 
-const http = new HttpClient( APP_CONFIG.API_BASE_URL, APP_CONFIG.REQUEST_TIMEOUT_MS);
-const vehicleApi = new VehicleApi(http, APP_CONFIG.VEHICLE_ID);
-const commandApi = new CommandApi(http, APP_CONFIG.VEHICLE_ID, APP_CONFIG.MOVEMENT_ORIGIN );
-const demoApi = new DemoApi(http, APP_CONFIG.VEHICLE_ID);
+const http = new HttpClient(APP_CONFIG.API_BASE_URL, APP_CONFIG.REQUEST_TIMEOUT_MS);
+// El primer ID viene de la lista autorizada cargada por el perfil de usuario.
+// No se fija el ID 1: puede ser cualquier vehículo asignado en RDS.
+let vehicleId = Number(window.__CONTROL_IOT_VEHICLE_ID__) || APP_CONFIG.VEHICLE_ID;
+let switchingVehicle = false;
+const vehicleApi = new VehicleApi(http, vehicleId);
+const commandApi = new CommandApi(http, vehicleId, APP_CONFIG.MOVEMENT_ORIGIN);
+const demoApi = new DemoApi(http, vehicleId);
 const healthApi = new HealthApi(http, APP_CONFIG.HEALTH_PATH);
 const dashboardView = new DashboardView();
 const connectivityView = new ConnectivityView();
 const notifications = new NotificationsView();
-let vehicleId = Number(window.__CONTROL_IOT_VEHICLE_ID__) || APP_CONFIG.VEHICLE_ID;
-let switchingVehicle = false;
 const monitorView = new MonitorView({ http, vehicleId });
 
 function bindViews() {
@@ -88,6 +90,7 @@ let demoRequests = 0;
 let apiReady = false;
 let rdsReady = false;
 let vehicleActive = false;
+let espReadyForVehicle = false;
 let directionCommands = {};
 let stopCommand = null;
 let manualControlEnabled = false;
@@ -101,7 +104,8 @@ function hasApiControlAccess() {
   return !switchingVehicle
     && apiReady
     && rdsReady
-    && vehicleActive;
+    && vehicleActive
+    && espReadyForVehicle;
 }
 
 function hasControlAccess() {
@@ -227,6 +231,11 @@ const websocketClient = new WebSocketClient(socketUrl(vehicleId), {
   onState: (state) => {
     connectivityController.setWebSocketState(state);
     monitorView.setConnection(state);
+
+    if (state !== 'online') {
+      espReadyForVehicle = false;
+      updateControlAvailability();
+    }
 
     if (state === 'online') {
       monitorView.refresh();
@@ -551,6 +560,39 @@ function handleWebSocketMessage(message) {
     return;
   }
 
+  if (message.tipo === 'dispositivo_configurando') {
+    espReadyForVehicle = false;
+    setText($('#vehicle-feedback'), `Configurando ESP8266 para el vehículo #${vehicleId}…`);
+    updateControlAvailability();
+    return;
+  }
+
+  if (message.tipo === 'dispositivo_offline') {
+    espReadyForVehicle = false;
+    setText($('#vehicle-feedback'), 'El ESP8266 no está conectado al servidor. El control permanece bloqueado.');
+    updateControlAvailability();
+    return;
+  }
+
+  if (message.tipo === 'dispositivo_desvinculado') {
+    espReadyForVehicle = false;
+    setText($('#vehicle-feedback'), `La única placa ESP8266 fue cambiada al vehículo #${message.nuevo_id_vehiculo}.`);
+    updateControlAvailability();
+    return;
+  }
+
+  if (message.tipo === 'dispositivo_listo') {
+    espReadyForVehicle = true;
+    setText($('#vehicle-feedback'), `ESP8266 conectado y listo para el vehículo #${vehicleId}.`);
+    notifications.show(
+      'Vehículo conectado',
+      `El ESP8266 recibió y confirmó el ID ${vehicleId}.`,
+      'success'
+    );
+    updateControlAvailability();
+    return;
+  }
+
   monitorView.handleEvent(message);
   demoController.handleEvent(message);
 
@@ -683,7 +725,7 @@ function bindVehicleSelection() {
   }
 
   input.value = String(vehicleId);
-  const canChooseVehicle = !allowedVehicles || allowedVehicles.length > 1;
+  const canChooseVehicle = !allowedVehicles || allowedVehicles.length >= 1;
   input.disabled = !canChooseVehicle;
   submit.disabled = !canChooseVehicle;
 
@@ -721,6 +763,8 @@ function bindVehicleSelection() {
     neutralizeBoth(false);
 
     vehicleActive = false;
+    espReadyForVehicle = false;
+    manualControlEnabled = false;
     directionCommands = {};
     stopCommand = null;
 
@@ -755,7 +799,7 @@ function bindVehicleSelection() {
 
       if (vehicleActive) {
         websocketClient.start();
-        setText(feedback, `Carrito ${id} seleccionado.`);
+        setText(feedback, `Solicitando al ESP8266 el cambio al vehículo #${id}…`);
       } else if (
         $('#vehicle-name').textContent !== 'Carrito no disponible'
       ) {
