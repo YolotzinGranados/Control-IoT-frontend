@@ -1,14 +1,14 @@
  .app-header { padding: 22px 0 18px; border-bottom: 1px solid var(--border); background: rgba(10, 17, 29, .72); }
 .header-main { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 24px; }
 .brand-lockup { display: flex; align-items: center; gap: 13px; }
-.brand-mark { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid rgba(163, 230, 53, .3); border-radius: 15px; background: rgba(163, 230, 53, .1); color: var(--accent); font-size: 1.45rem; }
+.brand-mark { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid rgba(254, 199, 10, .3); border-radius: 15px; background: rgba(254, 199, 10, .1); color: var(--accent); font-size: 1.45rem; }
 .brand-title { margin: 0; font-size: 1.55rem; line-height: 1.05; font-weight: 900; letter-spacing: -.06em; }
 .brand-title span { color: var(--accent); }
 .header-vehicle { display: grid; gap: 1px; padding-left: 22px; border-left: 1px solid var(--border); }
 .header-vehicle-label { color: var(--text-dim); font-size: .62rem; font-weight: 800; letter-spacing: .14em; }
 .header-vehicle strong { font-size: .94rem; }
 .header-vehicle .muted-text { font-size: .72rem; }
-.header-tag { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid rgba(163, 230, 53, .22); border-radius: 999px; color: var(--accent); background: rgba(163, 230, 53, .07); font-size: .66rem; font-weight: 900; letter-spacing: .1em; white-space: nowrap; }
+.header-tag { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid rgba(254, 199, 10, .22); border-radius: 999px; color: var(--accent); background: rgba(254, 199, 10, .07); font-size: .66rem; font-weight: 900; letter-spacing: .1em; white-space: nowrap; }
 .connectivity-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
 .connectivity-item { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--border); border-radius: 14px; background: rgba(22, 37, 59, .68); }
 .status-light { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); box-shadow: 0 0 0 4px rgba(115, 133, 158, .12); }

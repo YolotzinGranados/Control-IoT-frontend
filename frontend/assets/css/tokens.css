@@ -1,25 +1,35 @@
 :root {
   color-scheme: dark;
-  --bg: #0b1220;
-  --bg-soft: #101a2b;
-  --surface: #142136;
-  --surface-raised: #192941;
-  --surface-soft: #1d2d45;
-  --border: rgba(173, 195, 224, .14);
-  --border-strong: rgba(173, 195, 224, .24);
-  --text: #e8eff9;
-  --text-muted: #9aabc2;
-  --text-dim: #73859e;
-  --accent: #a3e635;
-  --accent-strong: #84cc16;
-  --accent-ink: #17230b;
+
+  --bg: #080d13;
+  --bg-soft: #101820;
+  --surface: #111b25;
+  --surface-raised: #17232f;
+  --surface-soft: #202e3a;
+
+  --border: rgba(212, 143, 62, .20);
+  --border-strong: rgba(212, 143, 62, .36);
+
+  --text: #f2f5f8;
+  --text-muted: #b3c0cc;
+  --text-dim: #81909e;
+
+  /* Colores principales del control */
+  --accent: #fec70a;
+  --accent-strong: #d48f3e;
+  --accent-ink: #17130a;
+
+  /* Estados */
   --danger: #fb7185;
   --danger-soft: rgba(251, 113, 133, .12);
   --success: #4ade80;
   --warning: #fbbf24;
-  --info: #67e8f9;
+  --info: #41abfb;
+
+  /* Diseño */
   --radius-lg: 22px;
   --radius-md: 15px;
-  --shadow-panel: 0 18px 50px rgba(0, 0, 0, .2);
-  --focus: 0 0 0 3px rgba(163, 230, 53, .28);
+
+  --shadow-panel: 0 18px 50px rgba(0, 0, 0, .28);
+  --focus: 0 0 0 3px rgba(254, 199, 10, .28);
 }

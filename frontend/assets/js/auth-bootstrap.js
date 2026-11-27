@@ -614,9 +614,14 @@ async function deleteVehicle(id) {
 async function renderDemos() {
   adminShell('DEMO de empresa', 'demos', `
     <div class="admin-section-heading">
-      <div><h2>Demostraciones por vehículo</h2><p>Consulta las secuencias registradas.</p></div>
+      <div>
+        <h2>Demostraciones por vehículo</h2>
+        <p>Revisa las secuencias y detecta demostraciones sin movimientos configurados.</p>
+      </div>
     </div>
-    <div id="admin-data" class="admin-data-panel">Cargando…</div>`);
+    <div id="admin-data" class="admin-data-panel">
+      <div class="admin-loading">Consultando demostraciones y movimientos…</div>
+    </div>`);
 
   const target = document.getElementById('admin-data');
 
@@ -624,28 +629,346 @@ async function renderDemos() {
     const vehicles = await apiFetch('/vehiculos?incluir_detalle=false');
 
     if (!Array.isArray(vehicles) || vehicles.length === 0) {
-      target.textContent = 'No hay vehículos registrados.';
+      target.innerHTML = `
+        <div class="admin-demo-empty">
+          <i>▣</i>
+          <strong>No hay vehículos registrados</strong>
+          <span>Registra un vehículo para consultar sus demostraciones.</span>
+        </div>`;
       return;
     }
 
     const rows = await Promise.all(vehicles.map(async (vehicle) => {
+      const vehicleId = Number(vehicle.id_vehiculo);
+
       try {
-        return { vehicle, demos: await apiFetch(`/vehiculos/${vehicle.id_vehiculo}/demos`) };
+        const demos = await apiFetch(`/vehiculos/${vehicleId}/demos`);
+
+        const inspectedDemos = await Promise.all(
+          (Array.isArray(demos) ? demos : []).map(async (demo) => {
+            const demoId = Number(demo.id_demo);
+
+            try {
+              const movements = await apiFetch(
+                `/vehiculos/${vehicleId}/demos/${demoId}/movimientos`
+              );
+
+              return {
+                demo,
+                movementCount: Array.isArray(movements)
+                  ? movements.length
+                  : null,
+                error: Array.isArray(movements)
+                  ? null
+                  : 'La API no devolvió una lista de movimientos.',
+              };
+            } catch (error) {
+              return {
+                demo,
+                movementCount: null,
+                error: error.message
+              };
+            }
+          })
+        );
+
+        return {
+          vehicle,
+          demos: inspectedDemos,
+          error: null
+        };
       } catch (error) {
-        return { vehicle, error };
+        return {
+          vehicle,
+          demos: [],
+          error: error.message
+        };
       }
     }));
 
-    target.innerHTML = rows.map(({ vehicle, demos, error }) => `
-      <div class="admin-list-item">
+    const allDemos = rows.flatMap((row) =>
+      row.demos.map((item) => ({
+        vehicleId: Number(row.vehicle.id_vehiculo),
+        vehicleName: row.vehicle.nombre || `Vehículo ${row.vehicle.id_vehiculo}`,
+        demoId: Number(item.demo.id_demo),
+        demoName: item.demo.nombre || `DEMO ${item.demo.id_demo}`,
+        movementCount: item.movementCount,
+        error: item.error,
+      }))
+    );
+
+    // Clasificación de demostraciones
+    const emptyDemos = allDemos.filter(
+      item => item.movementCount === 0 && !item.error
+    );
+
+    const readyDemos = allDemos.filter(
+      item => Number.isInteger(item.movementCount) &&
+              item.movementCount > 0
+    );
+
+    const unverifiedDemos = allDemos.filter(
+      item => item.movementCount === null
+    );
+
+    // Interfaz
+    target.innerHTML = `
+      <div class="admin-demo-overview">
+
+        <article class="admin-demo-stat">
+          <span class="admin-demo-stat-icon">▤</span>
+          <span>
+            <small>DEMO registradas</small>
+            <strong>${allDemos.length}</strong>
+          </span>
+        </article>
+
+        <article class="admin-demo-stat">
+          <span class="admin-demo-stat-icon">✓</span>
+          <span>
+            <small>Con movimientos</small>
+            <strong>${readyDemos.length}</strong>
+          </span>
+        </article>
+
+        <article class="admin-demo-stat">
+          <span class="admin-demo-stat-icon">!</span>
+          <span>
+            <small>Sin movimientos</small>
+            <strong>${emptyDemos.length}</strong>
+          </span>
+        </article>
+
+      </div>
+
+      <div class="admin-demo-toolbar">
         <div>
-          <strong>${escapeHTML(vehicle.nombre || `Vehículo ${vehicle.id_vehiculo}`)}</strong>
-          <small>${error ? escapeHTML(error.message) : `${Array.isArray(demos) ? demos.length : 0} DEMO registradas`}</small>
-          ${Array.isArray(demos) ? demos.map((demo) => `<p>${escapeHTML(demo.nombre || `DEMO ${demo.id_demo}`)}</p>`).join('') : ''}
+          <strong>Limpieza de demostraciones vacías</strong>
+          <p>
+            Solo se eliminarán las DEMOs confirmadas con cero movimientos.
+            Las demás se conservarán.
+          </p>
         </div>
-      </div>`).join('');
+
+        <button
+          class="admin-danger"
+          id="cleanup-empty-demos"
+          type="button"
+          ${emptyDemos.length ? '' : 'disabled'}
+        >
+          <i class="bi bi-trash3" aria-hidden="true"></i>
+          Eliminar DEMOs vacías (${emptyDemos.length})
+        </button>
+      </div>
+
+      <div
+        id="admin-demo-feedback"
+        class="admin-demo-feedback"
+        role="status"
+        aria-live="polite">
+      </div>
+
+      ${rows.map(({ vehicle, demos, error }) => {
+
+        const vehicleId = Number(vehicle.id_vehiculo);
+        const vehicleName = vehicle.nombre || `Vehículo ${vehicleId}`;
+
+        if (error) {
+          return `
+            <article class="admin-demo-vehicle">
+              <div class="admin-demo-vehicle-header">
+                <div>
+                  <small>VEHÍCULO #${vehicleId}</small>
+                  <h3>${escapeHTML(vehicleName)}</h3>
+                </div>
+                <span class="admin-demo-status is-error">
+                  Error de consulta
+                </span>
+              </div>
+              <p class="admin-muted">${escapeHTML(error)}</p>
+            </article>`;
+        }
+
+        if (!demos.length) {
+          return `
+            <article class="admin-demo-vehicle">
+              <div class="admin-demo-vehicle-header">
+                <div>
+                  <small>VEHÍCULO #${vehicleId}</small>
+                  <h3>${escapeHTML(vehicleName)}</h3>
+                </div>
+                <span class="admin-status-pill">0 DEMOs</span>
+              </div>
+              <p class="admin-muted">
+                Este vehículo todavía no tiene demostraciones registradas.
+              </p>
+            </article>`;
+        }
+
+        return `
+          <article class="admin-demo-vehicle">
+
+            <div class="admin-demo-vehicle-header">
+              <div>
+                <small>VEHÍCULO #${vehicleId}</small>
+                <h3>${escapeHTML(vehicleName)}</h3>
+              </div>
+
+              <span class="admin-status-pill">
+                ${demos.length} DEMO${demos.length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            <div class="admin-demo-grid">
+
+              ${demos.map(({ demo, movementCount, error: movementError }) => {
+
+                const isEmpty = movementCount === 0 && !movementError;
+                const isUnknown = movementCount === null;
+
+                const statusClass = isEmpty
+                  ? 'is-empty'
+                  : isUnknown
+                    ? 'is-error'
+                    : '';
+
+                const statusText = isEmpty
+                  ? 'Sin movimientos'
+                  : isUnknown
+                    ? 'No verificada'
+                    : `${movementCount} movimiento${movementCount === 1 ? '' : 's'}`;
+
+                return `
+                  <div class="admin-demo-item">
+
+                    <div class="admin-demo-item-copy">
+                      <span class="admin-demo-item-icon">
+                        <i class="bi bi-play-circle" aria-hidden="true"></i>
+                      </span>
+
+                      <span>
+                        <strong>
+                          ${escapeHTML(demo.nombre || `DEMO ${demo.id_demo}`)}
+                        </strong>
+                        <small>
+                          ${movementError
+                            ? escapeHTML(movementError)
+                            : `ID de DEMO: ${Number(demo.id_demo)}`}
+                        </small>
+                      </span>
+                    </div>
+
+                    <span class="admin-demo-status ${statusClass}">
+                      ${statusText}
+                    </span>
+
+                  </div>`;
+              }).join('')}
+
+            </div>
+          </article>`;
+      }).join('')}
+    `;
+
+    // Botón para eliminar demostraciones vacías
+    const cleanupButton = document.getElementById(
+      'cleanup-empty-demos'
+    );
+
+    cleanupButton?.addEventListener('click', async () => {
+
+      if (!emptyDemos.length || cleanupButton.disabled) return;
+
+      const accepted = confirm(
+        `Se eliminarán ${emptyDemos.length} DEMO(s) que no tienen movimientos registrados. ` +
+        'La operación es permanente. Las DEMOs con movimientos no se modificarán. ¿Deseas continuar?'
+      );
+
+      if (!accepted) return;
+
+      cleanupButton.disabled = true;
+      cleanupButton.textContent = 'Eliminando…';
+
+      let deleted = 0;
+      const failures = [];
+
+      for (const item of emptyDemos) {
+
+        try {
+          await apiFetch(
+            `/vehiculos/${item.vehicleId}/demos/${item.demoId}/eliminar`,
+            {
+              method: 'POST',
+              body: {}
+            }
+          );
+
+          deleted++;
+
+        } catch (error) {
+
+          failures.push(
+            `${item.demoName} (vehículo ${item.vehicleId}): ${error.message}`
+          );
+
+        }
+      }
+
+      // Actualizar la interfaz después de eliminar
+      await renderDemos();
+
+      const feedback = document.getElementById(
+        'admin-demo-feedback'
+      );
+
+      if (feedback) {
+
+        if (failures.length) {
+
+          feedback.className = 'admin-demo-feedback is-error';
+
+          feedback.textContent =
+            `Limpieza terminada: ${deleted} DEMO(s) eliminadas; ` +
+            `${failures.length} no se pudieron eliminar. ` +
+            failures.slice(0, 3).join(' | ');
+
+        } else {
+
+          feedback.className = 'admin-demo-feedback is-success';
+
+          feedback.textContent =
+            (deleted
+              ? `Limpieza completada. Se eliminaron ${deleted} DEMO(s) sin movimientos.`
+              : 'No había demostraciones vacías pendientes de eliminar.') +
+            (unverifiedDemos.length
+              ? ` ${unverifiedDemos.length} DEMO(s) no pudieron verificarse y se conservaron.`
+              : '');
+        }
+      }
+    });
+
+    if (unverifiedDemos.length) {
+
+      const feedback = document.getElementById(
+        'admin-demo-feedback'
+      );
+
+      if (feedback) {
+        feedback.className = 'admin-demo-feedback is-error';
+
+        feedback.textContent =
+          `${unverifiedDemos.length} DEMO(s) no pudieron verificarse. ` +
+          'Se conservaron y no se incluirán en la limpieza.';
+      }
+    }
+
   } catch (error) {
-    target.textContent = error.message;
+
+    target.innerHTML = `
+      <div class="admin-error">
+        <strong>No se pudieron consultar las demostraciones.</strong>
+        <p>${escapeHTML(error.message)}</p>
+      </div>`;
   }
 }
 
