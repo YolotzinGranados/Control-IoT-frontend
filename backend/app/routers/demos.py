@@ -3,8 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends
 from fastapi.concurrency import run_in_threadpool
 
-from app.core.dependencies import get_demo_runner, get_demo_service, get_ws_manager
-from app.core.exceptions import ConflictError
+from app.core.dependencies import get_db, get_demo_runner, get_demo_service, get_ws_manager
+from app.core.exceptions import ConflictError, ForbiddenError
 from app.core.security import requiere_admin, requiere_control, requiere_vehiculo
 from app.models.common import MensajeOut
 from app.models.demo import (
@@ -14,6 +14,7 @@ from app.models.demo import (
 from app.routers.comunes import AUTH, BD, CONFLICTO, NO_ENCONTRADO, IdDemo, IdMovimientoDemo, IdVehiculo
 from app.services.demo_runner import DemoRunner
 from app.services.demo_service import DemoService
+from app.repositories.auth_repository import AuthRepository
 
 router = APIRouter(prefix="/vehiculos/{id_vehiculo}/demos", tags=["DEMO"])
 ERR_LECTURA = {**AUTH, **NO_ENCONTRADO, **BD}
@@ -24,33 +25,43 @@ ERR_ADMIN = {**AUTH, **NO_ENCONTRADO, **CONFLICTO, **BD}
 @router.get(
     "",
     response_model=List[DemoOut],
-    dependencies=[Depends(requiere_vehiculo)],
-    summary="Listar las DEMO de un vehículo",
+    summary="Listar DEMOs autorizadas para el vehículo",
     description=(
-        "Una DEMO es una secuencia configurable de N movimientos.\n\n"
-        "**Stored Procedures:** `sp_obtener_vehiculo` (validación), `sp_obtener_demos`."
+        "El administrador consulta el catálogo completo de su inventario autorizado. "
+        "El cliente solo recibe las DEMOs que administración le asignó explícitamente."
     ),
     responses=ERR_LECTURA,
 )
-def listar_demos(id_vehiculo: IdVehiculo, servicio: DemoService = Depends(get_demo_service)):
-    return servicio.listar(id_vehiculo)
+def listar_demos(
+    id_vehiculo: IdVehiculo,
+    identidad=Depends(requiere_vehiculo),
+    db=Depends(get_db),
+    servicio: DemoService = Depends(get_demo_service),
+):
+    demos = servicio.listar(id_vehiculo)
+    if not isinstance(identidad, str) and "user" in identidad.roles:
+        repo = AuthRepository(db)
+        autorizadas = {d["id_demo"] for d in repo.list_assigned_demos(identidad.id_usuario, id_vehiculo)}
+        demos = [demo for demo in demos if int(demo["id_demo"]) in autorizadas]
+    return demos
 
 
 @router.get(
     "/{id_demo}/movimientos",
     response_model=List[MovimientoDemoOut],
-    dependencies=[Depends(requiere_vehiculo)],
-    summary="Movimientos ordenados de una DEMO",
-    description=(
-        "Devuelve los N movimientos de la DEMO por `orden`, con su duración y pausa en ms. "
-        "La demo debe pertenecer al vehículo indicado.\n\n"
-        "**Stored Procedures:** `sp_obtener_vehiculo`, `sp_obtener_demos` (validan pertenencia), "
-        "`sp_obtener_movimientos_demo`."
-    ),
+    summary="Movimientos ordenados de una DEMO autorizada",
     responses=ERR_LECTURA,
 )
-def listar_movimientos_demo(id_vehiculo: IdVehiculo, id_demo: IdDemo,
-                            servicio: DemoService = Depends(get_demo_service)):
+def listar_movimientos_demo(
+    id_vehiculo: IdVehiculo,
+    id_demo: IdDemo,
+    identidad=Depends(requiere_vehiculo),
+    db=Depends(get_db),
+    servicio: DemoService = Depends(get_demo_service),
+):
+    if (not isinstance(identidad, str) and "user" in identidad.roles
+            and not AuthRepository(db).can_access_demo(identidad.id_usuario, id_vehiculo, id_demo)):
+        raise ForbiddenError("Esta DEMO no está asignada a tu cuenta.")
     return servicio.movimientos(id_vehiculo, id_demo)
 
 
@@ -147,8 +158,7 @@ def eliminar_movimiento(id_vehiculo: IdVehiculo, id_demo: IdDemo, id_demo_movimi
 # ===================== ejecución (control) =====================
 @router.post(
     "/{id_demo}/iniciar", status_code=202, response_model=DemoIniciadaOut,
-    dependencies=[Depends(requiere_control), Depends(requiere_vehiculo)],
-    summary="Iniciar una DEMO (se emite por WebSocket)",
+    summary="Iniciar una DEMO asignada (se emite por WebSocket)",
     description=(
         "Valida que la demo exista, esté activa y pertenezca al vehículo, y responde **202** de inmediato: "
         "la secuencia se emite en segundo plano por `/ws/vehiculos/{id_vehiculo}` (ws://<HOST_EC2>:8000 en el despliegue actual) "
@@ -161,10 +171,18 @@ def eliminar_movimiento(id_vehiculo: IdVehiculo, id_demo: IdDemo, id_demo_movimi
     ),
     responses={**AUTH, **NO_ENCONTRADO, **CONFLICTO, **BD},
 )
-async def iniciar_demo(id_vehiculo: IdVehiculo, id_demo: IdDemo,
-                       servicio: DemoService = Depends(get_demo_service),
-                       runner: DemoRunner = Depends(get_demo_runner),
-                       manager=Depends(get_ws_manager)):
+async def iniciar_demo(
+    id_vehiculo: IdVehiculo,
+    id_demo: IdDemo,
+    identidad=Depends(requiere_vehiculo),
+    db=Depends(get_db),
+    servicio: DemoService = Depends(get_demo_service),
+    runner: DemoRunner = Depends(get_demo_runner),
+    manager=Depends(get_ws_manager),
+):
+    if (not isinstance(identidad, str) and "user" in identidad.roles
+            and not AuthRepository(db).can_access_demo(identidad.id_usuario, id_vehiculo, id_demo)):
+        raise ForbiddenError("Esta DEMO no está asignada a tu cuenta.")
     if not manager.listo_para_vehiculo(id_vehiculo):
         raise ConflictError(
             "El ESP8266 todavía no está conectado y configurado para este vehículo. "

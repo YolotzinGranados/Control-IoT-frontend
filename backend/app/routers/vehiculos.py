@@ -54,7 +54,6 @@ def listar_vehiculos(
 @router.get(
     "/{id_vehiculo}",
     response_model=VehiculoDetalleOut,
-    dependencies=[Depends(requiere_vehiculo)],
     summary="Consultar un vehículo por su identificador",
     description=(
         "Devuelve el vehículo con sus comandos, último estado y DEMO asociadas. "
@@ -64,8 +63,23 @@ def listar_vehiculos(
     ),
     responses={**AUTH, **NO_ENCONTRADO, **BD},
 )
-def obtener_vehiculo(id_vehiculo: IdVehiculo, servicio: VehiculoService = Depends(get_vehiculo_service)):
-    return servicio.obtener(id_vehiculo)
+def obtener_vehiculo(
+    id_vehiculo: IdVehiculo,
+    identidad=Depends(requiere_vehiculo),
+    db=Depends(get_db),
+    servicio: VehiculoService = Depends(get_vehiculo_service),
+):
+    vehiculo = servicio.obtener(id_vehiculo)
+    if not isinstance(identidad, str) and "user" in identidad.roles:
+        permitidas = {
+            demo["id_demo"]
+            for demo in AuthRepository(db).list_assigned_demos(identidad.id_usuario, id_vehiculo)
+        }
+        vehiculo["demos"] = [
+            demo for demo in (vehiculo.get("demos") or [])
+            if int(demo["id_demo"]) in permitidas
+        ]
+    return vehiculo
 
 
 @router.post(

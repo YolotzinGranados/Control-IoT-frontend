@@ -611,365 +611,85 @@ async function deleteVehicle(id) {
   }
 }
 
-async function renderDemos() {
-  adminShell('DEMO de empresa', 'demos', `
+async function renderDemos(message = '') {
+  adminShell('Demostraciones', 'demos', `
     <div class="admin-section-heading">
       <div>
-        <h2>Demostraciones por vehículo</h2>
-        <p>Revisa las secuencias y detecta demostraciones sin movimientos configurados.</p>
+        <h2>DEMO sin movimientos</h2>
+        <p>Se muestran únicamente secuencias que no tienen ningún registro en demo_movimientos.</p>
       </div>
+      <button class="admin-danger" id="cleanup-empty-demos" type="button">
+        <i class="bi bi-trash3" aria-hidden="true"></i> Eliminar DEMOs vacías
+      </button>
     </div>
-    <div id="admin-data" class="admin-data-panel">
-      <div class="admin-loading">Consultando demostraciones y movimientos…</div>
-    </div>`);
+    <div id="admin-demo-message" role="status" aria-live="polite">${escapeHTML(message)}</div>
+    <div id="admin-data" class="admin-data-panel">Consultando DEMOs vacías…</div>`);
 
   const target = document.getElementById('admin-data');
+  const cleanupButton = document.getElementById('cleanup-empty-demos');
 
-  try {
-    const vehicles = await apiFetch('/vehiculos?incluir_detalle=false');
+  async function loadEmptyDemos() {
+    const empty = await apiFetch('/admin/demos-sin-movimientos');
+    if (!Array.isArray(empty)) throw new Error('La API no devolvió una lista válida.');
 
-    if (!Array.isArray(vehicles) || vehicles.length === 0) {
+    cleanupButton.disabled = empty.length === 0;
+    cleanupButton.textContent = empty.length
+      ? `Eliminar DEMOs vacías (${empty.length})`
+      : 'No hay DEMOs vacías';
+
+    if (!empty.length) {
       target.innerHTML = `
-        <div class="admin-demo-empty">
-          <i>▣</i>
-          <strong>No hay vehículos registrados</strong>
-          <span>Registra un vehículo para consultar sus demostraciones.</span>
+        <div class="admin-empty-state">
+          <i class="bi bi-check-circle" aria-hidden="true"></i>
+          <h3>Todo está en orden</h3>
+          <p>No hay demostraciones sin movimientos registrados.</p>
         </div>`;
       return;
     }
 
-    const rows = await Promise.all(vehicles.map(async (vehicle) => {
-      const vehicleId = Number(vehicle.id_vehiculo);
-
-      try {
-        const demos = await apiFetch(`/vehiculos/${vehicleId}/demos`);
-
-        const inspectedDemos = await Promise.all(
-          (Array.isArray(demos) ? demos : []).map(async (demo) => {
-            const demoId = Number(demo.id_demo);
-
-            try {
-              const movements = await apiFetch(
-                `/vehiculos/${vehicleId}/demos/${demoId}/movimientos`
-              );
-
-              return {
-                demo,
-                movementCount: Array.isArray(movements)
-                  ? movements.length
-                  : null,
-                error: Array.isArray(movements)
-                  ? null
-                  : 'La API no devolvió una lista de movimientos.',
-              };
-            } catch (error) {
-              return {
-                demo,
-                movementCount: null,
-                error: error.message
-              };
-            }
-          })
-        );
-
-        return {
-          vehicle,
-          demos: inspectedDemos,
-          error: null
-        };
-      } catch (error) {
-        return {
-          vehicle,
-          demos: [],
-          error: error.message
-        };
-      }
-    }));
-
-    const allDemos = rows.flatMap((row) =>
-      row.demos.map((item) => ({
-        vehicleId: Number(row.vehicle.id_vehiculo),
-        vehicleName: row.vehicle.nombre || `Vehículo ${row.vehicle.id_vehiculo}`,
-        demoId: Number(item.demo.id_demo),
-        demoName: item.demo.nombre || `DEMO ${item.demo.id_demo}`,
-        movementCount: item.movementCount,
-        error: item.error,
-      }))
-    );
-
-    // Clasificación de demostraciones
-    const emptyDemos = allDemos.filter(
-      item => item.movementCount === 0 && !item.error
-    );
-
-    const readyDemos = allDemos.filter(
-      item => Number.isInteger(item.movementCount) &&
-              item.movementCount > 0
-    );
-
-    const unverifiedDemos = allDemos.filter(
-      item => item.movementCount === null
-    );
-
-    // Interfaz
     target.innerHTML = `
-      <div class="admin-demo-overview">
-
-        <article class="admin-demo-stat">
-          <span class="admin-demo-stat-icon">▤</span>
-          <span>
-            <small>DEMO registradas</small>
-            <strong>${allDemos.length}</strong>
-          </span>
-        </article>
-
-        <article class="admin-demo-stat">
-          <span class="admin-demo-stat-icon">✓</span>
-          <span>
-            <small>Con movimientos</small>
-            <strong>${readyDemos.length}</strong>
-          </span>
-        </article>
-
-        <article class="admin-demo-stat">
-          <span class="admin-demo-stat-icon">!</span>
-          <span>
-            <small>Sin movimientos</small>
-            <strong>${emptyDemos.length}</strong>
-          </span>
-        </article>
-
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Vehículo</th><th>ID vehículo</th><th>DEMO</th><th>ID DEMO</th><th>Movimientos</th></tr></thead>
+          <tbody>${empty.map(item => `
+            <tr>
+              <td><strong>${escapeHTML(item.vehiculo || '—')}</strong></td>
+              <td>#${Number(item.id_vehiculo)}</td>
+              <td>${escapeHTML(item.demo || '—')}</td>
+              <td>#${Number(item.id_demo)}</td>
+              <td><span class="admin-status-pill">${Number(item.movimientos)} movimientos</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
       </div>
-
-      <div class="admin-demo-toolbar">
-        <div>
-          <strong>Limpieza de demostraciones vacías</strong>
-          <p>
-            Solo se eliminarán las DEMOs confirmadas con cero movimientos.
-            Las demás se conservarán.
-          </p>
-        </div>
-
-        <button
-          class="admin-danger"
-          id="cleanup-empty-demos"
-          type="button"
-          ${emptyDemos.length ? '' : 'disabled'}
-        >
-          <i class="bi bi-trash3" aria-hidden="true"></i>
-          Eliminar DEMOs vacías (${emptyDemos.length})
-        </button>
-      </div>
-
-      <div
-        id="admin-demo-feedback"
-        class="admin-demo-feedback"
-        role="status"
-        aria-live="polite">
-      </div>
-
-      ${rows.map(({ vehicle, demos, error }) => {
-
-        const vehicleId = Number(vehicle.id_vehiculo);
-        const vehicleName = vehicle.nombre || `Vehículo ${vehicleId}`;
-
-        if (error) {
-          return `
-            <article class="admin-demo-vehicle">
-              <div class="admin-demo-vehicle-header">
-                <div>
-                  <small>VEHÍCULO #${vehicleId}</small>
-                  <h3>${escapeHTML(vehicleName)}</h3>
-                </div>
-                <span class="admin-demo-status is-error">
-                  Error de consulta
-                </span>
-              </div>
-              <p class="admin-muted">${escapeHTML(error)}</p>
-            </article>`;
-        }
-
-        if (!demos.length) {
-          return `
-            <article class="admin-demo-vehicle">
-              <div class="admin-demo-vehicle-header">
-                <div>
-                  <small>VEHÍCULO #${vehicleId}</small>
-                  <h3>${escapeHTML(vehicleName)}</h3>
-                </div>
-                <span class="admin-status-pill">0 DEMOs</span>
-              </div>
-              <p class="admin-muted">
-                Este vehículo todavía no tiene demostraciones registradas.
-              </p>
-            </article>`;
-        }
-
-        return `
-          <article class="admin-demo-vehicle">
-
-            <div class="admin-demo-vehicle-header">
-              <div>
-                <small>VEHÍCULO #${vehicleId}</small>
-                <h3>${escapeHTML(vehicleName)}</h3>
-              </div>
-
-              <span class="admin-status-pill">
-                ${demos.length} DEMO${demos.length === 1 ? '' : 's'}
-              </span>
-            </div>
-
-            <div class="admin-demo-grid">
-
-              ${demos.map(({ demo, movementCount, error: movementError }) => {
-
-                const isEmpty = movementCount === 0 && !movementError;
-                const isUnknown = movementCount === null;
-
-                const statusClass = isEmpty
-                  ? 'is-empty'
-                  : isUnknown
-                    ? 'is-error'
-                    : '';
-
-                const statusText = isEmpty
-                  ? 'Sin movimientos'
-                  : isUnknown
-                    ? 'No verificada'
-                    : `${movementCount} movimiento${movementCount === 1 ? '' : 's'}`;
-
-                return `
-                  <div class="admin-demo-item">
-
-                    <div class="admin-demo-item-copy">
-                      <span class="admin-demo-item-icon">
-                        <i class="bi bi-play-circle" aria-hidden="true"></i>
-                      </span>
-
-                      <span>
-                        <strong>
-                          ${escapeHTML(demo.nombre || `DEMO ${demo.id_demo}`)}
-                        </strong>
-                        <small>
-                          ${movementError
-                            ? escapeHTML(movementError)
-                            : `ID de DEMO: ${Number(demo.id_demo)}`}
-                        </small>
-                      </span>
-                    </div>
-
-                    <span class="admin-demo-status ${statusClass}">
-                      ${statusText}
-                    </span>
-
-                  </div>`;
-              }).join('')}
-
-            </div>
-          </article>`;
-      }).join('')}
-    `;
-
-    // Botón para eliminar demostraciones vacías
-    const cleanupButton = document.getElementById(
-      'cleanup-empty-demos'
-    );
-
-    cleanupButton?.addEventListener('click', async () => {
-
-      if (!emptyDemos.length || cleanupButton.disabled) return;
-
-      const accepted = confirm(
-        `Se eliminarán ${emptyDemos.length} DEMO(s) que no tienen movimientos registrados. ` +
-        'La operación es permanente. Las DEMOs con movimientos no se modificarán. ¿Deseas continuar?'
-      );
-
-      if (!accepted) return;
-
-      cleanupButton.disabled = true;
-      cleanupButton.textContent = 'Eliminando…';
-
-      let deleted = 0;
-      const failures = [];
-
-      for (const item of emptyDemos) {
-
-        try {
-          await apiFetch(
-            `/vehiculos/${item.vehicleId}/demos/${item.demoId}/eliminar`,
-            {
-              method: 'POST',
-              body: {}
-            }
-          );
-
-          deleted++;
-
-        } catch (error) {
-
-          failures.push(
-            `${item.demoName} (vehículo ${item.vehicleId}): ${error.message}`
-          );
-
-        }
-      }
-
-      // Actualizar la interfaz después de eliminar
-      await renderDemos();
-
-      const feedback = document.getElementById(
-        'admin-demo-feedback'
-      );
-
-      if (feedback) {
-
-        if (failures.length) {
-
-          feedback.className = 'admin-demo-feedback is-error';
-
-          feedback.textContent =
-            `Limpieza terminada: ${deleted} DEMO(s) eliminadas; ` +
-            `${failures.length} no se pudieron eliminar. ` +
-            failures.slice(0, 3).join(' | ');
-
-        } else {
-
-          feedback.className = 'admin-demo-feedback is-success';
-
-          feedback.textContent =
-            (deleted
-              ? `Limpieza completada. Se eliminaron ${deleted} DEMO(s) sin movimientos.`
-              : 'No había demostraciones vacías pendientes de eliminar.') +
-            (unverifiedDemos.length
-              ? ` ${unverifiedDemos.length} DEMO(s) no pudieron verificarse y se conservaron.`
-              : '');
-        }
-      }
-    });
-
-    if (unverifiedDemos.length) {
-
-      const feedback = document.getElementById(
-        'admin-demo-feedback'
-      );
-
-      if (feedback) {
-        feedback.className = 'admin-demo-feedback is-error';
-
-        feedback.textContent =
-          `${unverifiedDemos.length} DEMO(s) no pudieron verificarse. ` +
-          'Se conservaron y no se incluirán en la limpieza.';
-      }
-    }
-
-  } catch (error) {
-
-    target.innerHTML = `
-      <div class="admin-error">
-        <strong>No se pudieron consultar las demostraciones.</strong>
-        <p>${escapeHTML(error.message)}</p>
-      </div>`;
+      <p class="admin-muted">La eliminación usa el procedimiento almacenado y borra la DEMO vacía; no modifica las DEMOs que sí tienen movimientos.</p>`;
   }
+
+  try {
+    await loadEmptyDemos();
+  } catch (error) {
+    target.innerHTML = `<div class="admin-error"><strong>No se pudieron consultar las DEMOs.</strong><p>${escapeHTML(error.message)}</p></div>`;
+    cleanupButton.disabled = true;
+  }
+
+  cleanupButton?.addEventListener('click', async () => {
+    if (cleanupButton.disabled) return;
+    if (!confirm('Se eliminarán todas las DEMOs que actualmente tienen cero movimientos. Las DEMOs con movimientos se conservarán. ¿Deseas continuar?')) return;
+
+    cleanupButton.disabled = true;
+    cleanupButton.textContent = 'Eliminando…';
+    const messageBox = document.getElementById('admin-demo-message');
+
+    try {
+      const result = await apiFetch('/admin/demos/eliminar-vacias', { method: 'POST', body: {} });
+      const summary = `Eliminadas: ${Number(result.total_eliminadas || 0)}. Omitidas: ${Number(result.total_omitidas || 0)}.`;
+      await renderDemos(summary);
+    } catch (error) {
+      if (messageBox) messageBox.textContent = `No se completó la limpieza: ${error.message}`;
+      cleanupButton.disabled = false;
+      cleanupButton.textContent = 'Reintentar limpieza';
+    }
+  });
 }
 
 async function renderAudit() {
@@ -1122,30 +842,62 @@ async function loadAssignments() {
   const formHost = document.getElementById('assignment-form-host');
   if (!target || !formHost) return;
   target.textContent = 'Consultando asignaciones…';
-  formHost.textContent = 'Preparando formulario…';
+  formHost.textContent = 'Preparando formularios…';
+
   try {
     const [assignments, clients, inventory] = await Promise.all([
       apiFetch('/admin/asignaciones'),
       apiFetch('/admin/clientes'),
       apiFetch('/admin/vehiculos'),
     ]);
-    const availableVehicles = inventory.filter((vehicle) => vehicle.activo && !vehicle.asignado);
-    const activeClients = clients.filter((client) => client.activo);
+
+    const activeAssignments = assignments.filter(item =>
+      item.estado === 'activa' && !item.fecha_revocacion
+    );
+    const activeClients = clients.filter(client => client.activo);
+    const availableVehicles = inventory.filter(vehicle =>
+      vehicle.activo && !vehicle.asignado && !vehicle.es_exhibicion
+    );
+
     formHost.innerHTML = `
-      <form id="assignment-form" class="admin-assignment-form">
-        <label>Cliente<select name="id_usuario" required ${activeClients.length ? '' : 'disabled'}>
-          <option value="">Selecciona un cliente</option>
-          ${activeClients.map((client) => `<option value="${Number(client.id_usuario)}">${escapeHTML(client.nombre)} · ${escapeHTML(client.email)}</option>`).join('')}
-        </select></label>
-        <label>Vehículo disponible<select name="id_vehiculo" required ${availableVehicles.length ? '' : 'disabled'}>
-          <option value="">Selecciona un vehículo</option>
-          ${availableVehicles.map((vehicle) => `<option value="${Number(vehicle.id_vehiculo)}">${escapeHTML(vehicle.nombre)} · #${Number(vehicle.id_vehiculo)}</option>`).join('')}
-        </select></label>
-        <button class="admin-action" type="submit" ${activeClients.length && availableVehicles.length ? '' : 'disabled'}>Asignar vehículo</button>
-      </form>
-      ${!activeClients.length ? '<p class="admin-muted">Primero registra un cliente activo.</p>' : ''}
-      ${!availableVehicles.length ? '<p class="admin-muted">No hay vehículos activos sin asignar.</p>' : ''}`;
-    document.getElementById('assignment-form')?.addEventListener('submit', async (event) => {
+      <section class="admin-form admin-form-wide">
+        <div><p class="admin-eyebrow">ASIGNACIÓN DE UNIDADES</p><h3>Asignar vehículo a cliente</h3>
+          <p class="admin-muted">Cada vehículo puede tener un solo cliente activo. Un cliente puede tener varios vehículos.</p></div>
+        <form id="assignment-form" class="admin-assignment-form">
+          <label>Cliente<select name="id_usuario" required ${activeClients.length ? '' : 'disabled'}>
+            <option value="">Selecciona un cliente</option>
+            ${activeClients.map(client => `<option value="${Number(client.id_usuario)}">${escapeHTML(client.nombre)} · ${escapeHTML(client.email)}</option>`).join('')}
+          </select></label>
+          <label>Vehículo disponible<select name="id_vehiculo" required ${availableVehicles.length ? '' : 'disabled'}>
+            <option value="">Selecciona un vehículo</option>
+            ${availableVehicles.map(vehicle => `<option value="${Number(vehicle.id_vehiculo)}">${escapeHTML(vehicle.nombre)} · #${Number(vehicle.id_vehiculo)}</option>`).join('')}
+          </select></label>
+          <button class="admin-action" type="submit" ${activeClients.length && availableVehicles.length ? '' : 'disabled'}>Asignar vehículo</button>
+        </form>
+        ${!activeClients.length ? '<p class="admin-muted">Primero registra un cliente activo.</p>' : ''}
+        ${!availableVehicles.length ? '<p class="admin-muted">No hay vehículos disponibles. Los vehículos de exhibición no se pueden asignar a clientes.</p>' : ''}
+      </section>
+
+      <section class="admin-form admin-form-wide" style="margin-top:22px">
+        <div><p class="admin-eyebrow">PERMISOS DE DEMOSTRACIÓN</p><h3>Asignar varias DEMOs a un cliente</h3>
+          <p class="admin-muted">Selecciona un cliente, uno de sus vehículos y marca todas las DEMOs a las que tendrá acceso.</p></div>
+        <form id="demo-assignment-form">
+          <div class="admin-form-grid">
+            <label>Cliente<select id="demo-client" required ${activeClients.length ? '' : 'disabled'}>
+              <option value="">Selecciona un cliente</option>
+              ${activeClients.map(client => `<option value="${Number(client.id_usuario)}">${escapeHTML(client.nombre)} · ${escapeHTML(client.email)}</option>`).join('')}
+            </select></label>
+            <label>Vehículo asignado<select id="demo-vehicle" required disabled><option value="">Primero selecciona un cliente</option></select></label>
+          </div>
+          <div id="demo-assignment-options" class="admin-demo-assignment-options">Selecciona el cliente y el vehículo para cargar sus DEMOs.</div>
+          <div class="admin-form-actions">
+            <button class="admin-action" type="submit" disabled id="save-demo-assignment">Guardar DEMOs seleccionadas</button>
+          </div>
+          <p id="demo-assignment-feedback" class="admin-form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>`;
+
+    document.getElementById('assignment-form')?.addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;
       const button = form.querySelector('[type="submit"]');
@@ -1154,10 +906,7 @@ async function loadAssignments() {
       try {
         await apiFetch('/admin/asignaciones', {
           method: 'POST',
-          body: {
-            id_usuario: Number(values.get('id_usuario')),
-            id_vehiculo: Number(values.get('id_vehiculo')),
-          },
+          body: { id_usuario: Number(values.get('id_usuario')), id_vehiculo: Number(values.get('id_vehiculo')) },
         });
         await loadAssignments();
       } catch (error) {
@@ -1166,15 +915,89 @@ async function loadAssignments() {
       }
     });
 
-    if (!Array.isArray(assignments) || !assignments.length) {
-      target.innerHTML = '<p>No hay asignaciones registradas todavía.</p>';
+    const demoClient = document.getElementById('demo-client');
+    const demoVehicle = document.getElementById('demo-vehicle');
+    const demoOptions = document.getElementById('demo-assignment-options');
+    const saveDemoButton = document.getElementById('save-demo-assignment');
+    const demoFeedback = document.getElementById('demo-assignment-feedback');
+
+    async function loadDemoOptions() {
+      const userId = Number(demoClient.value);
+      const vehicleId = Number(demoVehicle.value);
+      if (!userId || !vehicleId) {
+        demoOptions.textContent = 'Selecciona un cliente y uno de sus vehículos asignados.';
+        saveDemoButton.disabled = true;
+        return;
+      }
+      demoOptions.textContent = 'Cargando DEMOs del vehículo…';
+      saveDemoButton.disabled = true;
+      try {
+        const demos = await apiFetch(`/admin/clientes/${userId}/vehiculos/${vehicleId}/demos`);
+        const activeDemos = demos.filter(demo => demo.activo);
+        if (!activeDemos.length) {
+          demoOptions.innerHTML = '<p class="admin-muted">Este vehículo no tiene DEMOs activas. Crea y configura una DEMO primero.</p>';
+          return;
+        }
+        demoOptions.innerHTML = `
+          <div class="admin-demo-checklist-heading"><strong>DEMO disponibles</strong><span>Marca una o varias</span></div>
+          <div class="admin-demo-checklist">
+            ${activeDemos.map(demo => `
+              <label class="admin-demo-check">
+                <input type="checkbox" name="id_demos" value="${Number(demo.id_demo)}" ${demo.asignada ? 'checked' : ''}>
+                <span><strong>${escapeHTML(demo.nombre)}</strong><small>${escapeHTML(demo.descripcion || `DEMO #${demo.id_demo}`)}</small></span>
+                <em>${demo.asignada ? 'Asignada' : 'Disponible'}</em>
+              </label>`).join('')}
+          </div>`;
+        saveDemoButton.disabled = false;
+      } catch (error) {
+        demoOptions.innerHTML = `<div class="admin-error">${escapeHTML(error.message)}</div>`;
+      }
+    }
+
+    demoClient?.addEventListener('change', () => {
+      const userId = Number(demoClient.value);
+      const vehicles = activeAssignments.filter(item => Number(item.id_usuario) === userId);
+      demoVehicle.innerHTML = vehicles.length
+        ? `<option value="">Selecciona un vehículo</option>${vehicles.map(item => `<option value="${Number(item.id_vehiculo)}">${escapeHTML(item.vehiculo || `Vehículo ${item.id_vehiculo}`)} · #${Number(item.id_vehiculo)}</option>`).join('')}`
+        : '<option value="">Este cliente no tiene vehículos asignados</option>';
+      demoVehicle.disabled = !vehicles.length;
+      demoOptions.textContent = vehicles.length
+        ? 'Selecciona un vehículo para consultar sus DEMOs.'
+        : 'Asigna primero un vehículo a este cliente.';
+      saveDemoButton.disabled = true;
+    });
+    demoVehicle?.addEventListener('change', loadDemoOptions);
+
+    document.getElementById('demo-assignment-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const userId = Number(demoClient.value);
+      const vehicleId = Number(demoVehicle.value);
+      const ids = [...demoOptions.querySelectorAll('input[name="id_demos"]:checked')].map(input => Number(input.value));
+      if (!userId || !vehicleId) return;
+      saveDemoButton.disabled = true;
+      demoFeedback.textContent = 'Guardando permisos…';
+      try {
+        const result = await apiFetch(`/admin/clientes/${userId}/vehiculos/${vehicleId}/demos`, {
+          method: 'POST', body: { id_demos: ids },
+        });
+        demoFeedback.textContent = `Se guardaron ${Number(result.total_demos_asignadas)} DEMO(s) para este cliente.`;
+        await loadDemoOptions();
+      } catch (error) {
+        demoFeedback.textContent = error.message;
+        saveDemoButton.disabled = false;
+      }
+    });
+
+    if (!activeAssignments.length) {
+      target.innerHTML = '<p>No hay vehículos asignados a clientes. Primero asigna un vehículo para después seleccionar sus DEMOs.</p>';
       return;
     }
+
     target.innerHTML = `
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr><th>ID</th><th>Cliente</th><th>Correo</th><th>Vehículo</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr></thead>
-          <tbody>${assignments.map((item) => {
+          <tbody>${assignments.map(item => {
             const active = item.estado === 'activa' && !item.fecha_revocacion;
             const date = item.fecha_asignacion ? new Date(item.fecha_asignacion).toLocaleDateString('es-MX') : '—';
             return `<tr>
@@ -1189,10 +1012,11 @@ async function loadAssignments() {
           }).join('')}</tbody>
         </table>
       </div>`;
-    target.querySelectorAll('[data-revoke]').forEach((button) => {
+
+    target.querySelectorAll('[data-revoke]').forEach(button => {
       button.addEventListener('click', async () => {
         const id = Number(button.dataset.revoke);
-        if (!confirm(`¿Revocar la asignación ${id}? El cliente perderá acceso al vehículo.`)) return;
+        if (!confirm(`¿Revocar la asignación ${id}? También se revocarán las DEMOs que tenía asignadas ese cliente en ese vehículo.`)) return;
         button.disabled = true;
         try {
           await apiFetch(`/admin/asignaciones/${id}/revocar`, { method: 'POST', body: {} });

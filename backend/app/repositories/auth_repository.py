@@ -716,16 +716,38 @@ class AuthRepository:
             try:
                 cur.execute(
                     """
-                    UPDATE auth_vehiculo_asignaciones
-                    SET estado = 'revocada',
-                        fecha_revocacion = UTC_TIMESTAMP()
+                    SELECT id_usuario, id_vehiculo
+                    FROM auth_vehiculo_asignaciones
                     WHERE id_asignacion = %s
                       AND estado = 'activa'
                       AND fecha_revocacion IS NULL
+                    FOR UPDATE
                     """,
                     (assignment_id,),
                 )
-                return cur.rowcount > 0
+                assignment = cur.fetchone()
+                if not assignment:
+                    return False
+
+                user_id, vehicle_id = int(assignment[0]), int(assignment[1])
+                cur.execute(
+                    """
+                    UPDATE auth_vehiculo_asignaciones
+                    SET estado = 'revocada', fecha_revocacion = UTC_TIMESTAMP()
+                    WHERE id_asignacion = %s
+                    """,
+                    (assignment_id,),
+                )
+                updated = cur.rowcount > 0
+                cur.execute(
+                    """
+                    UPDATE auth_usuario_demo_asignaciones
+                    SET activo = 0, fecha_revocacion = UTC_TIMESTAMP()
+                    WHERE id_usuario = %s AND id_vehiculo = %s AND activo = 1
+                    """,
+                    (user_id, vehicle_id),
+                )
+                return updated
             finally:
                 cur.close()
 
@@ -869,3 +891,210 @@ class AuthRepository:
             finally:
                 cur.close()
 
+
+
+    # --------------------------------------------------
+    # ASIGNACIÓN INDIVIDUAL DE DEMOS A CLIENTES
+    # --------------------------------------------------
+
+    def list_customer_vehicle_demos(self, user_id: int, vehicle_id: int) -> list[dict]:
+        """Lista las DEMOs activas de un vehículo e indica cuáles tiene el cliente."""
+        with self.db.connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            try:
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM auth_vehiculo_asignaciones
+                    WHERE id_usuario = %s AND id_vehiculo = %s
+                      AND estado = 'activa' AND fecha_revocacion IS NULL
+                    LIMIT 1
+                    """,
+                    (user_id, vehicle_id),
+                )
+                if not cur.fetchone():
+                    raise ValueError("El cliente no tiene asignado este vehículo.")
+
+                cur.execute(
+                    """
+                    SELECT
+                        d.id_demo, d.id_vehiculo, d.nombre, d.descripcion, d.activo,
+                        CASE WHEN a.id_asignacion_demo IS NULL THEN 0 ELSE 1 END AS asignada
+                    FROM demos d
+                    LEFT JOIN auth_usuario_demo_asignaciones a
+                      ON a.id_usuario = %s
+                     AND a.id_vehiculo = d.id_vehiculo
+                     AND a.id_demo = d.id_demo
+                     AND a.activo = 1
+                    WHERE d.id_vehiculo = %s
+                    ORDER BY d.id_demo ASC
+                    """,
+                    (user_id, vehicle_id),
+                )
+                return [
+                    {
+                        "id_demo": int(row["id_demo"]),
+                        "id_vehiculo": int(row["id_vehiculo"]),
+                        "nombre": row["nombre"],
+                        "descripcion": row.get("descripcion"),
+                        "activo": bool(row["activo"]),
+                        "asignada": bool(row["asignada"]),
+                    }
+                    for row in (cur.fetchall() or [])
+                ]
+            finally:
+                cur.close()
+
+    def replace_customer_demo_assignments(
+        self, user_id: int, vehicle_id: int, demo_ids: list[int]
+    ) -> int:
+        """Reemplaza el conjunto de DEMOs autorizadas para un cliente y vehículo."""
+        demo_ids = list(dict.fromkeys(int(value) for value in demo_ids))
+        with self.db.transaction() as conn:
+            cur = conn.cursor()
+            try:
+                cur.execute(
+                    """
+                    SELECT a.id_asignacion
+                    FROM auth_vehiculo_asignaciones a
+                    INNER JOIN auth_usuarios u ON u.id_usuario = a.id_usuario
+                    WHERE a.id_usuario = %s AND a.id_vehiculo = %s
+                      AND a.estado = 'activa' AND a.fecha_revocacion IS NULL
+                      AND u.activo = 1
+                    LIMIT 1 FOR UPDATE
+                    """,
+                    (user_id, vehicle_id),
+                )
+                if not cur.fetchone():
+                    raise ValueError("El cliente no tiene una asignación activa de este vehículo.")
+
+                if demo_ids:
+                    placeholders = ",".join(["%s"] * len(demo_ids))
+                    cur.execute(
+                        f"SELECT id_demo FROM demos WHERE id_vehiculo = %s AND activo = 1 AND id_demo IN ({placeholders}) FOR UPDATE",
+                        (vehicle_id, *demo_ids),
+                    )
+                    valid_ids = {int(row[0]) for row in (cur.fetchall() or [])}
+                    if valid_ids != set(demo_ids):
+                        raise ValueError("Una o más DEMOs no existen, están inactivas o pertenecen a otro vehículo.")
+
+                cur.execute(
+                    """
+                    UPDATE auth_usuario_demo_asignaciones
+                    SET activo = 0, fecha_revocacion = UTC_TIMESTAMP()
+                    WHERE id_usuario = %s AND id_vehiculo = %s AND activo = 1
+                    """,
+                    (user_id, vehicle_id),
+                )
+
+                for demo_id in demo_ids:
+                    cur.execute(
+                        """
+                        INSERT INTO auth_usuario_demo_asignaciones
+                            (id_usuario, id_vehiculo, id_demo, activo, fecha_asignacion, fecha_revocacion)
+                        VALUES (%s, %s, %s, 1, UTC_TIMESTAMP(), NULL)
+                        ON DUPLICATE KEY UPDATE
+                            activo = 1,
+                            fecha_asignacion = UTC_TIMESTAMP(),
+                            fecha_revocacion = NULL
+                        """,
+                        (user_id, vehicle_id, demo_id),
+                    )
+                return len(demo_ids)
+            finally:
+                cur.close()
+
+    def list_assigned_demos(self, user_id: int, vehicle_id: int) -> list[dict]:
+        """Devuelve solo las DEMOs autorizadas al cliente en el vehículo indicado."""
+        with self.db.connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            try:
+                cur.execute(
+                    """
+                    SELECT d.id_demo, d.id_vehiculo, d.nombre, d.descripcion, d.activo
+                    FROM auth_vehiculo_asignaciones va
+                    INNER JOIN auth_usuario_demo_asignaciones da
+                      ON da.id_usuario = va.id_usuario
+                     AND da.id_vehiculo = va.id_vehiculo
+                     AND da.activo = 1
+                    INNER JOIN demos d
+                      ON d.id_demo = da.id_demo
+                     AND d.id_vehiculo = da.id_vehiculo
+                    WHERE va.id_usuario = %s AND va.id_vehiculo = %s
+                      AND va.estado = 'activa' AND va.fecha_revocacion IS NULL
+                      AND d.activo = 1
+                    ORDER BY d.id_demo ASC
+                    """,
+                    (user_id, vehicle_id),
+                )
+                return [
+                    {
+                        "id_demo": int(row["id_demo"]),
+                        "id_vehiculo": int(row["id_vehiculo"]),
+                        "nombre": row["nombre"],
+                        "descripcion": row.get("descripcion"),
+                        "activo": bool(row["activo"]),
+                    }
+                    for row in (cur.fetchall() or [])
+                ]
+            finally:
+                cur.close()
+
+    def can_access_demo(self, user_id: int, vehicle_id: int, demo_id: int) -> bool:
+        """Valida simultáneamente la asignación del vehículo y de la DEMO."""
+        with self.db.connection() as conn:
+            cur = conn.cursor()
+            try:
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM auth_vehiculo_asignaciones va
+                    INNER JOIN auth_usuario_demo_asignaciones da
+                      ON da.id_usuario = va.id_usuario
+                     AND da.id_vehiculo = va.id_vehiculo
+                     AND da.activo = 1
+                    INNER JOIN demos d
+                      ON d.id_demo = da.id_demo
+                     AND d.id_vehiculo = da.id_vehiculo
+                    WHERE va.id_usuario = %s AND va.id_vehiculo = %s
+                      AND da.id_demo = %s
+                      AND va.estado = 'activa' AND va.fecha_revocacion IS NULL
+                      AND d.activo = 1
+                    LIMIT 1
+                    """,
+                    (user_id, vehicle_id, demo_id),
+                )
+                return cur.fetchone() is not None
+            finally:
+                cur.close()
+
+    def list_empty_demos(self) -> list[dict]:
+        """Lista DEMOs que realmente no tienen filas en demo_movimientos."""
+        with self.db.connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            try:
+                cur.execute(
+                    """
+                    SELECT
+                        d.id_demo, d.id_vehiculo, d.nombre AS demo,
+                        v.nombre AS vehiculo, COUNT(m.id_demo_movimiento) AS movimientos
+                    FROM demos d
+                    INNER JOIN vehiculos v ON v.id_vehiculo = d.id_vehiculo
+                    LEFT JOIN demo_movimientos m ON m.id_demo = d.id_demo
+                    GROUP BY d.id_demo, d.id_vehiculo, d.nombre, v.nombre
+                    HAVING COUNT(m.id_demo_movimiento) = 0
+                    ORDER BY v.id_vehiculo, d.id_demo
+                    """
+                )
+                return [
+                    {
+                        "id_demo": int(row["id_demo"]),
+                        "id_vehiculo": int(row["id_vehiculo"]),
+                        "demo": row["demo"],
+                        "vehiculo": row["vehiculo"],
+                        "movimientos": int(row["movimientos"]),
+                    }
+                    for row in (cur.fetchall() or [])
+                ]
+            finally:
+                cur.close()

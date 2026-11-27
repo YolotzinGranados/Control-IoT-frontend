@@ -27,3 +27,17 @@ class ExhibitionToggleIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     es_exhibicion: bool
 
+
+
+class CustomerDemoAssignmentsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id_demos: list[int] = Field(default_factory=list, max_length=200)
+
+    @field_validator("id_demos")
+    @classmethod
+    def validate_demo_ids(cls, value: list[int]) -> list[int]:
+        if any(not isinstance(item, int) or item <= 0 for item in value):
+            raise ValueError("Todos los identificadores de DEMO deben ser enteros positivos")
+        if len(value) != len(set(value)):
+            raise ValueError("No repitas identificadores de DEMO")
+        return value

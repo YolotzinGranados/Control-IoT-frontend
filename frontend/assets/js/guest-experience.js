@@ -168,7 +168,7 @@ export class GuestExperience {
 
           ? `${data.length} vehículo(s) disponible(s) para demostración.`
 
-          : 'Todavía no hay vehículos habilitados para exhibición.',
+          : 'No hay vehículos con DEMOs listas para exhibición.',
 
         data.length ? 'success' : 'warning',
 
@@ -216,9 +216,9 @@ export class GuestExperience {
 
           <i class="bi bi-car-front" aria-hidden="true"></i>
 
-          <h3>Catálogo en preparación</h3>
+          <h3>No hay demostraciones disponibles</h3>
 
-          <p>Los vehículos aparecerán aquí cuando administración los habilite para exhibición.</p>
+          <p>Administración debe habilitar un vehículo para exhibición y contar con al menos una DEMO activa que tenga movimientos configurados.</p>
 
         </div>
 
