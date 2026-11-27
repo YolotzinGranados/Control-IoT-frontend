@@ -611,87 +611,766 @@ async function deleteVehicle(id) {
   }
 }
 
-async function renderDemos(message = '') {
-  adminShell('Demostraciones', 'demos', `
+
+async function renderDemos() {
+  adminShell('DEMO de empresa', 'demos', `
     <div class="admin-section-heading">
       <div>
-        <h2>DEMO sin movimientos</h2>
-        <p>Se muestran únicamente secuencias que no tienen ningún registro en demo_movimientos.</p>
+        <h2>Administración de DEMOs</h2>
+        <p>Modifica, elimina y administra las secuencias de cada vehículo.</p>
       </div>
-      <button class="admin-danger" id="cleanup-empty-demos" type="button">
-        <i class="bi bi-trash3" aria-hidden="true"></i> Eliminar DEMOs vacías
-      </button>
     </div>
-    <div id="admin-demo-message" role="status" aria-live="polite">${escapeHTML(message)}</div>
-    <div id="admin-data" class="admin-data-panel">Consultando DEMOs vacías…</div>`);
+    <div id="admin-data" class="admin-data-panel">
+      <div class="admin-loading">Consultando demostraciones...</div>
+    </div>
+  `);
 
   const target = document.getElementById('admin-data');
-  const cleanupButton = document.getElementById('cleanup-empty-demos');
 
-  async function loadEmptyDemos() {
-    const empty = await apiFetch('/admin/demos-sin-movimientos');
-    if (!Array.isArray(empty)) throw new Error('La API no devolvió una lista válida.');
+  try {
+    const vehicles = await apiFetch('/vehiculos?incluir_detalle=false');
 
-    cleanupButton.disabled = empty.length === 0;
-    cleanupButton.textContent = empty.length
-      ? `Eliminar DEMOs vacías (${empty.length})`
-      : 'No hay DEMOs vacías';
-
-    if (!empty.length) {
-      target.innerHTML = `
-        <div class="admin-empty-state">
-          <i class="bi bi-check-circle" aria-hidden="true"></i>
-          <h3>Todo está en orden</h3>
-          <p>No hay demostraciones sin movimientos registrados.</p>
-        </div>`;
+    if (!Array.isArray(vehicles) || !vehicles.length) {
+      target.textContent = 'No hay vehículos registrados.';
       return;
     }
 
-    target.innerHTML = `
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead><tr><th>Vehículo</th><th>ID vehículo</th><th>DEMO</th><th>ID DEMO</th><th>Movimientos</th></tr></thead>
-          <tbody>${empty.map(item => `
-            <tr>
-              <td><strong>${escapeHTML(item.vehiculo || '—')}</strong></td>
-              <td>#${Number(item.id_vehiculo)}</td>
-              <td>${escapeHTML(item.demo || '—')}</td>
-              <td>#${Number(item.id_demo)}</td>
-              <td><span class="admin-status-pill">${Number(item.movimientos)} movimientos</span></td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-      <p class="admin-muted">La eliminación usa el procedimiento almacenado y borra la DEMO vacía; no modifica las DEMOs que sí tienen movimientos.</p>`;
-  }
+    const rows = await Promise.all(
+      vehicles.map(async vehicle => {
+        try {
+          const demos = await apiFetch(
+            `/vehiculos/${Number(vehicle.id_vehiculo)}/demos`
+          );
 
-  try {
-    await loadEmptyDemos();
+          return {
+            vehicle,
+            demos: Array.isArray(demos) ? demos : [],
+            error: null
+          };
+
+        } catch (error) {
+          return {
+            vehicle,
+            demos: [],
+            error
+          };
+        }
+      })
+    );
+
+    target.innerHTML = rows.map(({ vehicle, demos, error }) => `
+      <section class="admin-demo-vehicle">
+
+        <div class="admin-demo-vehicle-heading">
+          <div>
+            <strong>
+              ${escapeHTML(vehicle.nombre || `Vehículo ${vehicle.id_vehiculo}`)}
+            </strong>
+            <small>Unidad #${Number(vehicle.id_vehiculo)}</small>
+          </div>
+
+          <span class="admin-status-pill">
+            ${demos.length} DEMO(s)
+          </span>
+        </div>
+
+        ${error ? `
+          <p class="admin-error">${escapeHTML(error.message)}</p>
+        ` : ''}
+
+        ${!error && !demos.length ? `
+          <p class="admin-muted">
+            Este vehículo todavía no tiene demostraciones.
+          </p>
+        ` : ''}
+
+        ${demos.map(demo => {
+          const key = `${Number(vehicle.id_vehiculo)}-${Number(demo.id_demo)}`;
+          const active = demo.activo === true || Number(demo.activo) === 1;
+
+          return `
+            <article class="admin-demo-card">
+
+              <div class="admin-demo-card-heading">
+
+                <div>
+                  <span class="admin-eyebrow">
+                    DEMO #${Number(demo.id_demo)}
+                  </span>
+
+                  <h3>${escapeHTML(demo.nombre)}</h3>
+
+                  <p>${escapeHTML(demo.descripcion || 'Sin descripción')}</p>
+
+                  <span class="admin-status-pill ${active ? 'is-enabled' : ''}">
+                    ${active ? 'Activa' : 'Inactiva'}
+                  </span>
+                </div>
+
+                <div class="admin-demo-actions">
+
+                  <button
+                    class="admin-secondary"
+                    type="button"
+                    data-demo-edit="${key}"
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    class="admin-action"
+                    type="button"
+                    data-demo-movements="${key}"
+                  >
+                    Movimientos
+                  </button>
+
+                  <button
+                    class="admin-danger"
+                    type="button"
+                    data-demo-delete="${key}"
+                  >
+                    Eliminar
+                  </button>
+
+                </div>
+
+              </div>
+
+              <div data-demo-editor="${key}" hidden></div>
+
+              <div data-demo-movements-host="${key}" hidden></div>
+
+            </article>
+          `;
+        }).join('')}
+
+      </section>
+    `).join('');
+
+    // EDITAR DEMO
+    target.querySelectorAll('[data-demo-edit]').forEach(button => {
+      button.addEventListener('click', () => {
+        const [vehicleId, demoId] = button.dataset.demoEdit.split('-');
+
+        const row = rows.find(
+          item => Number(item.vehicle.id_vehiculo) === Number(vehicleId)
+        );
+
+        const demo = row?.demos.find(
+          item => Number(item.id_demo) === Number(demoId)
+        );
+
+        if (row && demo) {
+          openDemoEditor(row.vehicle, demo);
+        }
+      });
+    });
+
+    // CONSULTAR Y ADMINISTRAR MOVIMIENTOS
+    target.querySelectorAll('[data-demo-movements]').forEach(button => {
+      button.addEventListener('click', () => {
+        const [vehicleId, demoId] = button.dataset.demoMovements.split('-');
+
+        const row = rows.find(
+          item => Number(item.vehicle.id_vehiculo) === Number(vehicleId)
+        );
+
+        const demo = row?.demos.find(
+          item => Number(item.id_demo) === Number(demoId)
+        );
+
+        if (row && demo) {
+          openDemoMovements(row.vehicle, demo);
+        }
+      });
+    });
+
+    // ELIMINAR DEMO
+    target.querySelectorAll('[data-demo-delete]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const [vehicleId, demoId] = button.dataset.demoDelete.split('-');
+
+        const demo = rows
+          .find(item => Number(item.vehicle.id_vehiculo) === Number(vehicleId))
+          ?.demos.find(item => Number(item.id_demo) === Number(demoId));
+
+        if (!demo) return;
+
+        const confirmed = confirm(
+          `¿Eliminar definitivamente la DEMO "${demo.nombre}"?\n\n` +
+          'También se eliminarán todos sus movimientos. Esta operación no se puede deshacer.'
+        );
+
+        if (!confirmed) return;
+
+        button.disabled = true;
+
+        try {
+          await apiFetch(
+            `/vehiculos/${Number(vehicleId)}/demos/${Number(demoId)}/eliminar`,
+            {
+              method: 'POST',
+              body: {}
+            }
+          );
+
+          alert('DEMO eliminada correctamente.');
+
+          await renderDemos();
+
+        } catch (error) {
+          alert(`No se pudo eliminar la DEMO: ${error.message}`);
+          button.disabled = false;
+        }
+      });
+    });
+
   } catch (error) {
-    target.innerHTML = `<div class="admin-error"><strong>No se pudieron consultar las DEMOs.</strong><p>${escapeHTML(error.message)}</p></div>`;
-    cleanupButton.disabled = true;
+    target.innerHTML = `
+      <div class="admin-error">
+        <strong>Error al consultar las DEMOs</strong>
+        <p>${escapeHTML(error.message)}</p>
+      </div>
+    `;
   }
+}
 
-  cleanupButton?.addEventListener('click', async () => {
-    if (cleanupButton.disabled) return;
-    if (!confirm('Se eliminarán todas las DEMOs que actualmente tienen cero movimientos. Las DEMOs con movimientos se conservarán. ¿Deseas continuar?')) return;
 
-    cleanupButton.disabled = true;
-    cleanupButton.textContent = 'Eliminando…';
-    const messageBox = document.getElementById('admin-demo-message');
+// ======================================================
+// EDITAR DATOS GENERALES DE UNA DEMO
+// ======================================================
+
+async function openDemoEditor(vehicle, demo) {
+
+  const key = `${Number(vehicle.id_vehiculo)}-${Number(demo.id_demo)}`;
+
+  const host = document.querySelector(
+    `[data-demo-editor="${key}"]`
+  );
+
+  if (!host) return;
+
+  host.hidden = false;
+
+  const active = demo.activo === true || Number(demo.activo) === 1;
+
+  host.innerHTML = `
+    <form class="admin-form admin-demo-editor">
+
+      <h3>Editar demostración</h3>
+
+      <label>
+        Nombre de la DEMO
+
+        <input
+          name="nombre"
+          maxlength="80"
+          required
+          value="${escapeHTML(demo.nombre)}"
+        >
+      </label>
+
+      <label>
+        Descripción
+
+        <textarea
+          name="descripcion"
+          maxlength="255"
+          rows="3"
+        >${escapeHTML(demo.descripcion || '')}</textarea>
+      </label>
+
+      <label>
+        Estado de la demostración
+
+        <select name="activo">
+          <option value="true" ${active ? 'selected' : ''}>
+            Activa
+          </option>
+
+          <option value="false" ${!active ? 'selected' : ''}>
+            Inactiva
+          </option>
+        </select>
+      </label>
+
+      <div class="admin-form-actions">
+
+        <button class="admin-action" type="submit">
+          Guardar cambios
+        </button>
+
+        <button
+          class="admin-secondary"
+          type="button"
+          data-demo-cancel
+        >
+          Cancelar
+        </button>
+
+      </div>
+
+      <p class="admin-form-message" data-form-message></p>
+
+    </form>
+  `;
+
+  const form = host.querySelector('form');
+
+  host.querySelector('[data-demo-cancel]').addEventListener('click', () => {
+    host.hidden = true;
+    host.innerHTML = '';
+  });
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+
+    const button = form.querySelector('[type="submit"]');
+    const message = form.querySelector('[data-form-message]');
+    const values = new FormData(form);
+
+    const body = {
+      nombre: String(values.get('nombre')).trim(),
+      descripcion: String(values.get('descripcion') || '').trim() || null,
+      activo: values.get('activo') === 'true'
+    };
+
+    if (!body.nombre) {
+      message.textContent = 'El nombre es obligatorio.';
+      return;
+    }
+
+    button.disabled = true;
+    message.textContent = 'Guardando cambios...';
 
     try {
-      const result = await apiFetch('/admin/demos/eliminar-vacias', { method: 'POST', body: {} });
-      const summary = `Eliminadas: ${Number(result.total_eliminadas || 0)}. Omitidas: ${Number(result.total_omitidas || 0)}.`;
-      await renderDemos(summary);
+
+      await apiFetch(
+        `/vehiculos/${Number(vehicle.id_vehiculo)}/demos/${Number(demo.id_demo)}/actualizar`,
+        {
+          method: 'POST',
+          body
+        }
+      );
+
+      alert('DEMO actualizada correctamente.');
+
+      await renderDemos();
+
     } catch (error) {
-      if (messageBox) messageBox.textContent = `No se completó la limpieza: ${error.message}`;
-      cleanupButton.disabled = false;
-      cleanupButton.textContent = 'Reintentar limpieza';
+
+      message.textContent = error.message;
+      button.disabled = false;
+
     }
   });
 }
 
+
+// ======================================================
+// CONSULTAR MOVIMIENTOS DE UNA DEMO
+// ======================================================
+
+async function openDemoMovements(vehicle, demo) {
+
+  const key = `${Number(vehicle.id_vehiculo)}-${Number(demo.id_demo)}`;
+
+  const host = document.querySelector(
+    `[data-demo-movements-host="${key}"]`
+  );
+
+  if (!host) return;
+
+  host.hidden = false;
+  host.innerHTML = '<div class="admin-loading">Consultando movimientos...</div>';
+
+  try {
+
+    const [movements, vehicleDetail] = await Promise.all([
+
+      apiFetch(
+        `/vehiculos/${Number(vehicle.id_vehiculo)}/demos/${Number(demo.id_demo)}/movimientos`
+      ),
+
+      apiFetch(`/vehiculos/${Number(vehicle.id_vehiculo)}`)
+
+    ]);
+
+    const commands = (vehicleDetail.comandos || []).filter(command =>
+      command.activo === true || Number(command.activo) === 1
+    );
+
+    host.innerHTML = `
+
+      <div class="admin-demo-movements">
+
+        <div class="admin-demo-movements-heading">
+
+          <div>
+            <h4>Movimientos de la DEMO</h4>
+            <p>${Array.isArray(movements) ? movements.length : 0} movimientos registrados</p>
+          </div>
+
+          <button
+            class="admin-action"
+            type="button"
+            data-movement-add
+            ${commands.length ? '' : 'disabled'}
+          >
+            + Agregar movimiento
+          </button>
+
+        </div>
+
+        <div data-movement-form-host></div>
+
+        ${!Array.isArray(movements) || !movements.length ? `
+          <p class="admin-muted">
+            Esta DEMO todavía no tiene movimientos.
+          </p>
+        ` : `
+
+          <div class="admin-table-wrap">
+
+            <table class="admin-table">
+
+              <thead>
+                <tr>
+                  <th>Orden</th>
+                  <th>Comando</th>
+                  <th>Duración</th>
+                  <th>Pausa</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                ${movements.map(movement => `
+
+                  <tr>
+
+                    <td>${Number(movement.orden)}</td>
+
+                    <td>${escapeHTML(movement.comando || `Comando ${movement.id_comando}`)}</td>
+
+                    <td>${Number(movement.duracion_ms)} ms</td>
+
+                    <td>${Number(movement.pausa_ms)} ms</td>
+
+                    <td>
+                      <div class="admin-actions-cell">
+
+                        <button
+                          class="admin-secondary"
+                          type="button"
+                          data-movement-edit="${Number(movement.id_demo_movimiento)}"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          class="admin-danger"
+                          type="button"
+                          data-movement-delete="${Number(movement.id_demo_movimiento)}"
+                        >
+                          Eliminar
+                        </button>
+
+                      </div>
+                    </td>
+
+                  </tr>
+
+                `).join('')}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        `}
+
+        ${!commands.length ? `
+          <p class="admin-muted">
+            No hay comandos activos para agregar movimientos.
+          </p>
+        ` : ''}
+
+      </div>
+    `;
+
+    // AGREGAR MOVIMIENTO
+    host.querySelector('[data-movement-add]')
+      ?.addEventListener('click', () => {
+
+        const nextOrder = movements.length
+          ? Math.max(...movements.map(item => Number(item.orden))) + 1
+          : 1;
+
+        openMovementEditor(
+          vehicle,
+          demo,
+          movements,
+          commands,
+          null,
+          nextOrder
+        );
+
+      });
+
+    // EDITAR MOVIMIENTO
+    host.querySelectorAll('[data-movement-edit]')
+      .forEach(button => {
+
+        button.addEventListener('click', () => {
+
+          const movement = movements.find(
+            item => Number(item.id_demo_movimiento) === Number(button.dataset.movementEdit)
+          );
+
+          if (movement) {
+            openMovementEditor(
+              vehicle,
+              demo,
+              movements,
+              commands,
+              movement,
+              Number(movement.orden)
+            );
+          }
+
+        });
+
+      });
+
+    // ELIMINAR MOVIMIENTO
+    host.querySelectorAll('[data-movement-delete]')
+      .forEach(button => {
+
+        button.addEventListener('click', async () => {
+
+          const idMovement = Number(button.dataset.movementDelete);
+
+          if (!confirm('¿Eliminar este movimiento de la DEMO?')) return;
+
+          button.disabled = true;
+
+          try {
+
+            await apiFetch(
+              `/vehiculos/${Number(vehicle.id_vehiculo)}/demos/${Number(demo.id_demo)}/movimientos/${idMovement}/eliminar`,
+              {
+                method: 'POST',
+                body: {}
+              }
+            );
+
+            await openDemoMovements(vehicle, demo);
+
+          } catch (error) {
+
+            alert(error.message);
+            button.disabled = false;
+
+          }
+
+        });
+
+      });
+
+  } catch (error) {
+
+    host.innerHTML = `
+      <div class="admin-error">
+        <p>${escapeHTML(error.message)}</p>
+      </div>
+    `;
+
+  }
+}
+
+
+// ======================================================
+// AGREGAR O MODIFICAR MOVIMIENTO
+// ======================================================
+
+function openMovementEditor(
+  vehicle,
+  demo,
+  movements,
+  commands,
+  movement = null,
+  nextOrder = 1
+) {
+
+  const key = `${Number(vehicle.id_vehiculo)}-${Number(demo.id_demo)}`;
+
+  const host = document.querySelector(
+    `[data-demo-movements-host="${key}"] [data-movement-form-host]`
+  );
+
+  if (!host) return;
+
+  const editing = Boolean(movement);
+
+  host.innerHTML = `
+
+    <form class="admin-form admin-demo-movement-form">
+
+      <h4>${editing ? 'Modificar movimiento' : 'Nuevo movimiento'}</h4>
+
+      <div class="admin-form-grid">
+
+        <label>
+          Comando
+
+          <select name="id_comando" required>
+
+            ${commands.map(command => `
+
+              <option
+                value="${Number(command.id_comando)}"
+                ${editing && Number(movement.id_comando) === Number(command.id_comando)
+                  ? 'selected' : ''}
+              >
+                ${escapeHTML(command.nombre)}
+                · Código ${Number(command.codigo)}
+              </option>
+
+            `).join('')}
+
+          </select>
+
+        </label>
+
+        <label>
+          Orden
+
+          <input
+            name="orden"
+            type="number"
+            min="1"
+            step="1"
+            required
+            value="${editing ? Number(movement.orden) : nextOrder}"
+          >
+        </label>
+
+        <label>
+          Duración (milisegundos)
+
+          <input
+            name="duracion_ms"
+            type="number"
+            min="1"
+            step="1"
+            required
+            value="${editing ? Number(movement.duracion_ms) : 1000}"
+          >
+        </label>
+
+        <label>
+          Pausa (milisegundos)
+
+          <input
+            name="pausa_ms"
+            type="number"
+            min="0"
+            step="1"
+            required
+            value="${editing ? Number(movement.pausa_ms) : 300}"
+          >
+        </label>
+
+      </div>
+
+      <div class="admin-form-actions">
+
+        <button class="admin-action" type="submit">
+          ${editing ? 'Guardar movimiento' : 'Agregar movimiento'}
+        </button>
+
+        <button
+          class="admin-secondary"
+          type="button"
+          data-movement-cancel
+        >
+          Cancelar
+        </button>
+
+      </div>
+
+      <p class="admin-form-message" data-form-message></p>
+
+    </form>
+  `;
+
+  const form = host.querySelector('form');
+
+  host.querySelector('[data-movement-cancel]')
+    .addEventListener('click', () => {
+      host.innerHTML = '';
+    });
+
+  form.addEventListener('submit', async event => {
+
+    event.preventDefault();
+
+    const button = form.querySelector('[type="submit"]');
+    const message = form.querySelector('[data-form-message]');
+    const values = new FormData(form);
+
+    const body = {
+      id_comando: Number(values.get('id_comando')),
+      orden: Number(values.get('orden')),
+      duracion_ms: Number(values.get('duracion_ms')),
+      pausa_ms: Number(values.get('pausa_ms'))
+    };
+
+    if (
+      !Number.isInteger(body.id_comando) ||
+      !Number.isInteger(body.orden) ||
+      !Number.isInteger(body.duracion_ms) ||
+      !Number.isInteger(body.pausa_ms) ||
+      body.orden < 1 ||
+      body.duracion_ms < 1 ||
+      body.pausa_ms < 0
+    ) {
+      message.textContent = 'Verifica los valores ingresados.';
+      return;
+    }
+
+    button.disabled = true;
+    message.textContent = 'Guardando movimiento...';
+
+    const base =
+      `/vehiculos/${Number(vehicle.id_vehiculo)}/demos/${Number(demo.id_demo)}`;
+
+    const path = editing
+      ? `${base}/movimientos/${Number(movement.id_demo_movimiento)}/actualizar`
+      : `${base}/movimientos`;
+
+    try {
+
+      await apiFetch(path, {
+        method: 'POST',
+        body
+      });
+
+      await openDemoMovements(vehicle, demo);
+
+    } catch (error) {
+
+      message.textContent = error.message;
+      button.disabled = false;
+
+    }
+
+  });
+}
 async function renderAudit() {
   adminShell('Auditoría y soporte', 'auditoria', `
     <div class="admin-section-heading">
