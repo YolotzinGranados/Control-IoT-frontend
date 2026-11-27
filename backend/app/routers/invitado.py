@@ -9,7 +9,7 @@ from app.repositories.auth_repository import AuthRepository
 from app.services.demo_runner import DemoRunner
 from app.services.demo_service import DemoService
 from app.services.vehiculo_service import VehiculoService
-
+from app.core.config import get_settings
 router = APIRouter(prefix="/invitado", tags=["Invitado"])
 solo_invitado = require_roles("guest")
 
@@ -42,6 +42,7 @@ def catalogo(
             ids = [int(row[0]) for row in (cur.fetchall() or [])]
         finally:
             cur.close()
+            publicadas = get_settings().guest_allowed_demos
 
     result = []
     for vehicle_id in ids:
@@ -60,7 +61,7 @@ def catalogo(
                     "activo": bool(demo.get("activo")),
                 }
                 for demo in (vehicle.get("demos") or [])
-                if demo.get("activo")
+                if demo.get("activo") and (vehicle_id, demo["id_demo"]) in publicadas
             ],
         })
     return result
@@ -88,6 +89,7 @@ async def iniciar_demo_invitado(
         servicio.preparar_ejecucion, id_vehiculo, id_demo
     )
     movimientos = preparacion["movimientos"]
+    if (id_vehiculo, id_demo) not in get_settings().guest_allowed_demos: raise ForbiddenError("Esta demostración no está publicada para invitados")
     if len(movimientos) > 30:
         raise ConflictError("La DEMO de invitado supera el máximo de 30 movimientos")
 
