@@ -1,68 +1,43 @@
-# Control IoT — Control y monitoreo de vehículos
+# Control IoT
 
-Repositorio de la aplicación web y del backend FastAPI para consultar, controlar y monitorear vehículos IoT.
+Frontend único para **Control**, **Monitoreo** y **Administración** de vehículos IoT. La interfaz usa FastAPI por HTTPS y recibe eventos mediante WSS. Amazon RDS MySQL conserva el estado, las asignaciones y el historial.
 
-## Estructura
+## Módulos y perfiles
 
-- `frontend/`: interfaz HTML/CSS/JavaScript publicada en GitHub Pages.
-- `backend/`: API FastAPI, acceso a Amazon RDS, autenticación y WebSocket.
-- `tests/`: pruebas automatizadas de lógica del frontend.
-- `REVISION_TECNICA.md`: alcance, correcciones y verificación de la fase 1.3.
+| Perfil | Control | Monitoreo | Administración y exhibición |
+| --- | --- | --- | --- |
+| Administrador | Control operativo con un permiso vigente para las unidades asignadas. | Estado, historial y WSS con el mismo alcance operativo. | Gestiona inventario, clientes, asignaciones y demos de unidades sin comprador. |
+| Usuario | Movimientos y demos de sus unidades asignadas. | Estado e historial de sus unidades. | Crea y edita demos propias desde Control. |
+| Invitado | Demostraciones de exhibición previamente configuradas. | Progreso de la prueba vía WSS. | Consulta el catálogo público. La prueba requiere cuenta temporal. |
 
-## Arquitectura y contrato
+Un **modelo comercial** agrupa unidades del mismo producto. Una **unidad física** tiene un `id_vehiculo` estable, su asignación activa y su catálogo de comandos. La migración 005 incorpora el código de modelo, la serie única, el estado comercial y las capacidades verificadas por código de comando. El inventario administrativo muestra esos datos cuando se habilita la integración. Los metadatos se dan de alta en MySQL.
 
-- REST sobre HTTPS para autenticación, consultas y comandos.
-- WSS para estado inicial, eventos de movimientos y secuencias DEMO.
-- Amazon RDS MySQL almacena usuarios, asignaciones, vehículos, comandos, estado e historial.
-- El evento recibido por WSS confirma una notificación del backend; no demuestra por sí solo que el hardware ejecutó físicamente el movimiento.
+## Ejecutar y probar
 
-El frontend usa JWT Bearer para REST. En el handshake WSS envía el JWT mediante los subprotocolos `['bearer', accessToken]`; no se expone en la URL. El servidor valida la cuenta y la asignación activa del vehículo.
+1. En `backend/`, copia `.env.example` a `.env` y configura MySQL, un secreto JWT aleatorio y el token privado del ESP8266. Usa un esquema de pruebas. Crea la cuenta inicial con `python -m scripts.create_admin`.
+2. Instala las dependencias con `python -m pip install -r requirements-dev.txt` y arranca el backend con `python -m uvicorn app.main:app`. El Swagger local está en `http://127.0.0.1:8000/docs`.
+3. Sirve `frontend/` mediante un servidor estático. Configura las URLs de API y WSS en `frontend/assets/js/config/app-config.js`. Exporta `FRONTEND_ALLOWED_ORIGINS` en el proceso FastAPI antes de iniciarlo. Para login entre orígenes, sirve la aplicación y la API con HTTPS y un certificado de confianza.
+4. Ejecuta `python -m pytest -q` desde la raíz con las dependencias del backend instaladas. Las pruebas usan RDS simulado. En `frontend/` ejecuta `npm test` y `npm run check`.
 
-## Seguridad por perfil
+Mantén `ENABLE_LEGACY_API_KEYS=false` en el despliegue. Conserva los secretos y respaldos fuera del repositorio.
 
-- `admin`: acceso al inventario no asignado.
-- `user`: acceso únicamente a vehículos con asignación activa propia.
-- `guest`: registro habilitado; las sesiones temporales de exhibición siguen pendientes.
-- El acceso de soporte a unidades vendidas requiere un permiso explícito aún no implementado.
+## Autorización, reserva y parada
 
-Las API keys heredadas están desactivadas por defecto (`ENABLE_LEGACY_API_KEYS=false`). No habilitarlas en producción.
+- FastAPI comprueba cuenta, rol y asignación. WSS autentica con los subprotocolos `['bearer', accessToken]` y vuelve a comprobar el acceso antes de entregar eventos y al recibir el heartbeat. El soporte para unidades asignadas requiere la migración 004, `ENABLE_EXPLICIT_SUPPORT=true` y un permiso temporal por administrador y asignación.
+- Invitado abre una conexión WSS de exhibición como reserva exclusiva de la única placa. Debe esperar el acuse de configuración del ESP8266. El servidor limita la prueba a 30 pasos y 180 segundos dentro de la vigencia del JWT. Requiere una unidad habilitada, sin comprador, con DETENER activo y capacidades de exhibición verificadas. Con `ENABLE_COMMERCIAL_MODELS=false`, el catálogo sigue disponible y la prueba queda bloqueada.
+- Las demos verifican pertenencia, orden, comandos activos y duración. La migración 005 permite aplicar los límites del modelo. El control manual reserva la operación para la cuenta que lo inició hasta que una cuenta autorizada envía DETENER. La finalización y la cancelación solicitan la parada sin insertar pasos de demo en el historial manual.
+- El gestor de placa, las reservas y las ejecuciones viven en un proceso FastAPI. Usa un solo worker para esta topología. La identificación independiente de varias placas y la parada ante un corte de red o proceso requieren firmware y una prueba física supervisada.
 
-## Configuración
+## Conectividad
 
-1. Configura `backend/.env` usando `backend/.env.example`.
-2. Genera un `AUTH_SECRET_KEY` aleatorio de al menos 32 caracteres.
-3. Verifica que el esquema RDS incluya `auth_vehiculo_asignaciones` y los campos consultados por `AuthRepository`.
-4. Configura en `frontend/assets/js/config/app-config.js` la URL real de API y WSS.
-5. Confirma certificado TLS, CORS y credenciales de cookies en el dominio desplegado.
+| Indicador | Fuente | Estados |
+| --- | --- | --- |
+| WSS | Conexión en esta pestaña | Conectado, reconectando o desconectado |
+| API AWS | Respuesta de FastAPI en `/health` | Disponible, no disponible o comprobando |
+| RDS | Resultado de `SELECT 1` emitido por el backend | Disponible, no disponible o sin verificar |
 
-No subas `.env`, tokens, contraseñas ni credenciales de RDS al repositorio.
+La conexión WSS del navegador y el acuse del ESP8266 son señales distintas. El servidor puede confirmar el envío de un evento. La ejecución física se verifica en la prueba supervisada.
 
-## Pruebas
+## RDS y entrega
 
-Backend, desde `backend/`:
-
-```powershell
-python -m pip install -r requirements-dev.txt
-python -m pytest -q
-```
-
-Frontend, desde `frontend/`:
-
-```powershell
-npm test
-npm run check
-```
-
-Las pruebas backend usan `FakeRDS`; no sustituyen la validación de la instancia AWS.
-
-## Cliente WSS independiente
-
-Desde `backend/`:
-
-```powershell
-python -m scripts.ws_probe
-```
-
-El script solicita la URL WSS y el JWT de forma oculta, recibe `estado_inicial`, prueba el heartbeat `ping/pong` y escucha los eventos del vehículo.
-
-Consulta `frontend/docs/API_CONTRACT.md`, `frontend/docs/AUTHENTICATION_INTEGRATION.md` y `REVISION_TECNICA.md` para el contrato completo y las limitaciones conocidas.
+Los scripts se entregan sin aplicar a AWS. Consulta el [procedimiento de migración](backend/MIGRACION_RDS.md), el [contrato REST y WSS](frontend/docs/API_CONTRACT.md) y la [matriz de evaluación](EVALUACION.md). Registra allí las URLs publicadas y la evidencia de la validación.
